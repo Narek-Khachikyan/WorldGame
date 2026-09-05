@@ -1,8 +1,9 @@
 import { useMemo } from "react";
 import { useGameStore } from "../store.js";
 import { getProfileForCountry } from "../data/countryProfiles.js";
-import { getNextElectionDateForCountry } from "../../sim/scenario.js";
 import ru from "../locales/ru.json";
+import PoliticsPanel from "../panels/PoliticsPanel.js";
+import LeaderAvatar from "../LeaderAvatar.js";
 
 /**
  * Side contextual panel-stub.
@@ -30,20 +31,23 @@ export default function SidePanel() {
     () => (selectedRegionId ? scenario.regions.find((r) => r.regionId === selectedRegionId) ?? null : null),
     [scenario.regions, selectedRegionId]
   );
+  const sim = useGameStore((s) => s.sim);
   const leaders = useMemo(
     () => (selectedCountry ? scenario.leaders.find((l) => l.countryId === selectedCountry.countryId) ?? null : null),
     [scenario.leaders, selectedCountry]
   );
 
-  // next election for selected country
-  const nextElection = useMemo(() => {
-    if (!selectedCountry) return null;
-    try {
-      return getNextElectionDateForCountry(selectedCountry, lastDate);
-    } catch {
-      return null;
-    }
-  }, [selectedCountry, lastDate]);
+  const political = useMemo(() => {
+    if (!selectedCountryId) return null;
+    try { return sim.getPoliticalState(selectedCountryId); } catch { return null; }
+  }, [sim, selectedCountryId, lastDate]);
+
+  const regimeRu: Record<string, string> = {
+    liberalDemocracy: "Либеральная демократия",
+    electoralDemocracy: "Электоральная демократия",
+    authoritarian: "Авторитарный",
+    oneParty: "Однопартийный",
+  };
 
   return (
     <div
@@ -135,57 +139,38 @@ export default function SidePanel() {
               );
             })()}
 
-            {/* leader */}
-            {leaders && (
+            {/* leader — T7 real political state with initials avatar */}
+            {(political ?? leaders) && (
               <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 10px", display: "flex", gap: 10, alignItems: "center" }}>
-                <div
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 999,
-                    background: "#e5e7eb",
-                    display: "grid",
-                    placeItems: "center",
-                    fontWeight: 800,
-                    fontSize: 13,
-                    color: "#374151",
-                    flexShrink: 0,
-                  }}
-                  title="Портрет — заглушка (свободные лицензии в данных, T7 покажет инициалы если нет файла)"
-                >
-                  {leaders.incumbent.name
-                    .split(" ")
-                    .map((w) => w[0])
-                    .slice(0, 2)
-                    .join("")}
-                </div>
+                <LeaderAvatar name={political ? political.leaderId : leaders!.incumbent.name} title={political ? political.leaderTitle : leaders!.incumbent.title} size={36} portrait={null} />
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700 }}>{leaders.incumbent.name}</div>
-                  <div style={{ fontSize: 11, color: "#6b7280" }}>{leaders.incumbent.title} · с {leaders.incumbent.since}</div>
-                  <div style={{ fontSize: 10, color: "#9ca3af" }}>Источник: {leaders.incumbent.source.slice(0, 42)}…</div>
+                  <div style={{ fontSize: 12, fontWeight: 700 }}>{political ? political.leaderId : leaders!.incumbent.name}</div>
+                  <div style={{ fontSize: 11, color: "#6b7280" }}>{political ? political.leaderTitle : leaders!.incumbent.title} · {political ? `партия ${political.partyId} · ${regimeRu[political.regime] ?? political.regime}` : `с ${leaders!.incumbent.since}`}</div>
+                  {political ? <div style={{ fontSize: 11, color: "#6b7280" }}>Стабильность {political.stability.toFixed(1)} · поддержка {political.support.toFixed(1)} · усталость {political.warFatigueLite.toFixed(0)} {political.crisisLevel===2?"· 🔴 критический":political.crisisLevel===1?"· 🟡 предкризис":"· 🟢 норма"}</div> : <div style={{ fontSize: 10, color: "#9ca3af" }}>Источник: {leaders!.incumbent.source.slice(0, 42)}…</div>}
                 </div>
               </div>
             )}
 
-            {/* election */}
+            {/* election — T7 real */}
             <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 10px", background: "#fff" }}>
               <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: "#374151" }}>Выборы</div>
               <div style={{ fontSize: 12, marginTop: 6, lineHeight: 1.4 }}>
                 Дата: <strong>
                   {String(selectedCountry.electionDay).padStart(2, "0")}.{String(selectedCountry.electionMonth).padStart(2, "0")}
-                </strong> каждые 5 лет · ближайшие: <strong>{nextElection ?? "—"}</strong>
+                </strong> каждые 5 лет · ближайшие: <strong>{political ? political.nextElectionDate : "—"}</strong> {political?.lastElectionDate ? `· последние ${political.lastElectionDate}` : ""}
               </div>
               <div style={{ fontSize: 11, color: "#6b7280", marginTop: 4, lineHeight: 1.35 }}>
                 Исход зависит от поддержки/стабильности/экономики + RNG и режима. Смена партии применит foreignStance-дельты к отношениям (Δ −20…+20).
-                Прогноз риска смены виден заранее (T7).
+                {political ? (()=>{ const fe = sim.forecastElection(selectedCountry.countryId); return fe ? ` Прогноз удержания: ${(fe.retainP*100).toFixed(1)}% · ${fe.breakdown}` : " Прогноз виден заранее (T7)."; })() : " Прогноз виден заранее (T7)."}
               </div>
-              <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 6 }}>
-                Режим: {(() => {
-                  // режим из сценария не хранит per-country regime в T3; T7 добавит. Пока placeholder.
-                  const reg = scenario.regimes[0];
-                  return `${reg.nameRu} (игровой ярлык)`;
-                })()}
+              <div style={{ fontSize: 11, color: "#6b7280", marginTop: 6 }}>
+                Режим: {political ? `${regimeRu[political.regime] ?? political.regime} (игровой ярлык, числа в rules/politics.json)` : `${scenario.regimes[0].nameRu} (игровой ярлык)`} {political?.pendingRegimeChange ? `· ⏳ ${political.pendingRegimeChange.newRegime} вступит ${political.pendingRegimeChange.effectiveDate}` : ""} {political?.regimeCooldownUntil ? `· кулдаун до ${political.regimeCooldownUntil}` : ""}
               </div>
+            </div>
+
+            {/* PoliticsPanel full — embedded */}
+            <div style={{ marginTop: 4 }}>
+              <PoliticsPanel countryId={selectedCountry.countryId} />
             </div>
 
             {/* selected region details */}

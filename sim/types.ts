@@ -69,6 +69,22 @@ export interface WarSnapshot {
   occupiedByDefender: string[];
 }
 
+export interface PoliticalStateSnapshot {
+  countryId: string;
+  regime: string;
+  leaderId: string;
+  leaderTitle: string;
+  partyId: string;
+  stability: number;
+  support: number;
+  warFatigueLite: number;
+  nextElectionDate: string;
+  regimeCooldownUntil: string | null;
+  pendingRegimeChange: { newRegime: string; effectiveDay: number; effectiveDate: string } | null;
+  crisisLevel: number;
+  lastElectionDate: string | null;
+}
+
 export interface SimSnapshot {
   date: GameDateString;
   daysElapsed: number;
@@ -85,6 +101,12 @@ export interface SimSnapshot {
   // T6 war
   wars?: WarSnapshot[];
   threats?: Record<string, number>;
+  // T7 politics
+  politics?: {
+    states: Record<string, PoliticalStateSnapshot>;
+    relations: Record<string, number>;
+    trust: Record<string, number>;
+  };
 }
 
 export type Speed = "slow" | "normal" | "fast" | "paused";

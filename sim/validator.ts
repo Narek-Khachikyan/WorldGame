@@ -22,6 +22,8 @@ const KNOWN_TYPES = new Set([
   "setStance",
   "declareWar",
   "proposePeace",
+  "changeRegime",
+  "changeLeader",
 ]);
 
 export function validateCommand(cmd: unknown): ValidationResult {
@@ -204,6 +206,22 @@ export function validateCommand(cmd: unknown): ValidationResult {
     if (typeof p.type !== "string" || (p.type as string).trim() === "") return { ok: false, reason: "proposePeace payload.type must be non-empty string" };
     const allowed = ["white", "annexOccupied", "indemnity"];
     if (!allowed.includes(p.type as string)) return { ok: false, reason: `proposePeace type must be one of ${allowed.join("|")}, got ${p.type}` };
+    return { ok: true };
+  }
+
+  if (c.type === "changeRegime") {
+    const p = c.payload as Record<string, unknown> | undefined;
+    if (!p || typeof p !== "object") return { ok: false, reason: "changeRegime requires payload {countryId, newRegime}" };
+    if (typeof p.countryId !== "string" || (p.countryId as string).trim() === "") return { ok: false, reason: "changeRegime payload.countryId must be non-empty string" };
+    if (typeof p.newRegime !== "string" || (p.newRegime as string).trim() === "") return { ok: false, reason: "changeRegime payload.newRegime must be non-empty string" };
+    return { ok: true };
+  }
+
+  if (c.type === "changeLeader") {
+    const p = c.payload as Record<string, unknown> | undefined;
+    if (!p || typeof p !== "object") return { ok: false, reason: "changeLeader requires payload {countryId, newLeaderId}" };
+    if (typeof p.countryId !== "string" || (p.countryId as string).trim() === "") return { ok: false, reason: "changeLeader payload.countryId must be non-empty string" };
+    if (typeof p.newLeaderId !== "string" || (p.newLeaderId as string).trim() === "") return { ok: false, reason: "changeLeader payload.newLeaderId must be non-empty string" };
     return { ok: true };
   }
 

@@ -56,6 +56,25 @@ import {
   evaluatePeaceAI,
   getWarDays,
 } from "./war.js";
+import {
+  POLITICS_RULES,
+  REGIME_IDS,
+  type RegimeId,
+  type PoliticalState,
+  forecastRegimeChange as forecastRegimeChangePure,
+  forecastLeaderChange as forecastLeaderChangePure,
+  createInitialPoliticalState,
+  deriveInitialRegime,
+  computeRetainProbability,
+  evaluateElectionRetain,
+  computeEconomyFactorForElection,
+  nextElectionAfter,
+  clampStability,
+  updateCrisisLevel,
+} from "./politics.js";
+import { parseGameDate } from "./calendar.js";
+
+function clamp(n: number, min: number, max: number): number { return Math.max(min, Math.min(max, n)); }
 
 export const SIM_START_DATE = START_DATE;
 export const DEFAULT_SEED = 42;
@@ -93,6 +112,11 @@ export class SimEngine {
   private nextWarId = 1;
   private threat: Map<string, number> = new Map();
 
+  // T7 politics
+  private politics: Map<string, PoliticalState> = new Map();
+  private relations: Map<string, number> = new Map(); // directed "A->B" 0..100 (50 neutral)
+  private trust: Map<string, number> = new Map(); // directed
+
   constructor(config?: { seed?: number; startDate?: string }) {
     const seed = config?.seed ?? DEFAULT_SEED;
     this.seed = seed >>> 0;
@@ -104,6 +128,7 @@ export class SimEngine {
     this.log.append(this.calendar.getDateString(), "simCreated", { seed: this.seed });
     this.initEconomy();
     this.initWarState();
+    this.initPolitics();
   }
 
   private initWarState(): void {
@@ -113,6 +138,48 @@ export class SimEngine {
     // also ensure threat for any economy country
     for (const cid of this.getCountryIds()) {
       if (!this.threat.has(cid)) this.threat.set(cid, 0);
+    }
+  }
+
+  private initPolitics(): void {
+    // initial political state per country derived from leaders/parties + scenario election dates
+    const startDate = this.calendar.getDateString();
+    for (const c of this.scenario.countries) {
+      const leadersEntry = this.scenario.leaders.find((l) => l.countryId === c.countryId);
+      const parties = this.scenario.parties.filter((p) => p.countryId === c.countryId);
+      if (!leadersEntry) continue;
+      const incumb = leadersEntry.incumbent;
+      const regime = deriveInitialRegime(c.countryId, parties as unknown as Array<{ partyId:string; candidate:string; regimePreference:string }>, incumb.name);
+      const partyMatch = parties.find((p) => p.candidate === incumb.name);
+      const partyId = partyMatch ? partyMatch.partyId : (parties[0]?.partyId ?? `${c.countryId}-P1`);
+      const state = createInitialPoliticalState(
+        c.countryId,
+        c.electionMonth,
+        c.electionDay,
+        startDate,
+        regime as RegimeId,
+        incumb.name,
+        incumb.title,
+        partyId
+      );
+      // sync support with economy initial support if available
+      const eco = this.economies.get(c.countryId);
+      if (eco) {
+        // keep economy support as authoritative but seed political support similar
+        state.support = eco.lastSupport;
+        // stability remains regime-based but also modest influence from economy
+      }
+      this.politics.set(c.countryId, state);
+    }
+    // relations/trust neutral 50 for all directed pairs
+    const ids = this.scenario.countries.map((cc) => cc.countryId);
+    for (const a of ids) {
+      for (const b of ids) {
+        if (a === b) continue;
+        const key = `${a}->${b}`;
+        if (!this.relations.has(key)) this.relations.set(key, 50);
+        if (!this.trust.has(key)) this.trust.set(key, 50);
+      }
     }
   }
 
@@ -225,6 +292,29 @@ export class SimEngine {
       for (const p of eco.activeProjects) projects.push({ id: p.id, countryId: p.countryId, regionId: p.regionId, type: p.type, status: p.status, startDate: p.startDate, endDate: p.endDate });
       for (const p of eco.completedProjects) projects.push({ id: p.id, countryId: p.countryId, regionId: p.regionId, type: p.type, status: p.status, startDate: p.startDate, endDate: p.endDate });
     }
+    // politics snapshot
+    const politicsStates: Record<string, import("./types.js").PoliticalStateSnapshot> = {};
+    for (const [cid, ps] of this.politics) {
+      politicsStates[cid] = {
+        countryId: ps.countryId,
+        regime: ps.regime,
+        leaderId: ps.leaderId,
+        leaderTitle: ps.leaderTitle,
+        partyId: ps.partyId,
+        stability: ps.stability,
+        support: ps.support,
+        warFatigueLite: ps.warFatigueLite,
+        nextElectionDate: ps.nextElectionDate,
+        regimeCooldownUntil: ps.regimeCooldownUntil,
+        pendingRegimeChange: ps.pendingRegimeChange ? { ...ps.pendingRegimeChange } : null,
+        crisisLevel: ps.crisisLevel,
+        lastElectionDate: ps.lastElectionDate,
+      };
+    }
+    const relations: Record<string, number> = {};
+    const trust: Record<string, number> = {};
+    for (const [k, v] of this.relations) relations[k] = v;
+    for (const [k, v] of this.trust) trust[k] = v;
     return {
       date: this.getDate(),
       daysElapsed: this.getDaysElapsed(),
@@ -238,6 +328,11 @@ export class SimEngine {
       countryEconomy: this.getCountryEconomySnapshot(),
       wars: this.getWarsSnapshot(),
       threats: this.getAllThreats(),
+      politics: {
+        states: politicsStates,
+        relations,
+        trust,
+      },
     };
   }
 
@@ -321,6 +416,87 @@ export class SimEngine {
     const eco = this.economies.get(countryId);
     if (!eco) return null;
     return forecastWeightsChange(eco, newWeights, ECONOMY_RULES);
+  }
+
+  // — T7 politics queries
+  getPoliticalState(countryId: string): PoliticalState | undefined {
+    const ps = this.politics.get(countryId);
+    return ps ? { ...ps, pendingRegimeChange: ps.pendingRegimeChange ? { ...ps.pendingRegimeChange } : null } : undefined;
+  }
+  getAllPoliticalStates(): ReadonlyMap<string, PoliticalState> {
+    return this.politics as ReadonlyMap<string, PoliticalState>;
+  }
+  getPoliticalSnapshot(): Record<string, import("./types.js").PoliticalStateSnapshot> {
+    const out: Record<string, import("./types.js").PoliticalStateSnapshot> = {};
+    for (const [k, v] of this.politics) out[k] = { countryId: v.countryId, regime: v.regime, leaderId: v.leaderId, leaderTitle: v.leaderTitle, partyId: v.partyId, stability: v.stability, support: v.support, warFatigueLite: v.warFatigueLite, nextElectionDate: v.nextElectionDate, regimeCooldownUntil: v.regimeCooldownUntil, pendingRegimeChange: v.pendingRegimeChange ? { ...v.pendingRegimeChange } : null, crisisLevel: v.crisisLevel, lastElectionDate: v.lastElectionDate };
+    return out;
+  }
+  getRelations(): ReadonlyMap<string, number> { return this.relations as ReadonlyMap<string, number>; }
+  getTrust(): ReadonlyMap<string, number> { return this.trust as ReadonlyMap<string, number>; }
+  getRelation(from: string, to: string): number | undefined { return this.relations.get(`${from}->${to}`); }
+  getTrustValue(from: string, to: string): number | undefined { return this.trust.get(`${from}->${to}`); }
+  getAllRelationsObject(): Record<string, number> {
+    const out: Record<string, number> = {};
+    for (const [k, v] of this.relations) out[k] = v;
+    return out;
+  }
+  getAllTrustObject(): Record<string, number> {
+    const out: Record<string, number> = {};
+    for (const [k, v] of this.trust) out[k] = v;
+    return out;
+  }
+  isCapitalLost(countryId: string): boolean {
+    const cap = this.getCapitalRegion(countryId);
+    if (!cap) return false;
+    const rs = this.regionStates.get(cap);
+    if (!rs) return false;
+    return rs.controllerId !== countryId;
+  }
+  forecastRegimeChange(countryId: string, newRegime: string): ReturnType<typeof forecastRegimeChangePure> | null {
+    const ps = this.politics.get(countryId);
+    if (!ps) return null;
+    const eco = this.economies.get(countryId);
+    const treasury = eco ? eco.treasury : 0;
+    const atWar = this.getWarsForCountry(countryId).some((w) => w.status === "active");
+    const capLost = this.isCapitalLost(countryId);
+    // use clone RNG peek to not consume sequence for forecast (deterministic preview uses same RNG state but without advance)
+    // For forecast we use mid lag without RNG consumption to keep deterministic display; but we need lag random on actual dispatch, so forecast shows range
+    return forecastRegimeChangePure(ps, newRegime, this.getDate(), this.getDaysElapsed(), treasury, atWar, capLost, null);
+  }
+  forecastLeaderChange(countryId: string, newLeaderId: string): ReturnType<typeof forecastLeaderChangePure> | null {
+    const ps = this.politics.get(countryId);
+    if (!ps) return null;
+    const leadersEntry = this.scenario.leaders.find((l) => l.countryId === countryId);
+    const poolNames = leadersEntry ? leadersEntry.pool.map((p) => p.name) : [];
+    // also allow incumbent? but we treat pool + incumbent check inside forecastLeaderChange
+    // include incumbent name not in pool check is inside politics.ts - it checks poolNames includes newLeader
+    // If poolNames doesn't include incumbent's alternative, we will still allow if it's in leaders pool; but if newLeader is incumbent's same? already handled
+    return forecastLeaderChangePure(ps, newLeaderId, poolNames);
+  }
+  forecastElection(countryId: string): { retainP: number; breakdown: string; reasons: string[]; nextDate: string } | null {
+    const ps = this.politics.get(countryId);
+    if (!ps) return null;
+    const eco = this.economies.get(countryId);
+    const economyFactor = eco ? computeEconomyFactorForElection(eco.treasury, eco.debt, eco.gdp, eco.lastGrowthRate, eco.lastIncome, eco.lastExpense) : 0;
+    const { retainP, breakdown, reasons } = computeRetainProbability({ support: ps.support, stability: ps.stability, warFatigueLite: ps.warFatigueLite, economyFactor, regime: ps.regime as RegimeId });
+    return { retainP, breakdown, reasons, nextDate: ps.nextElectionDate };
+  }
+  /** Debug helper for tests: directly set political fields without command (via public seam hook for determinism) */
+  debugSetPolitical(countryId: string, patch: Partial<PoliticalState>): boolean {
+    const ps = this.politics.get(countryId);
+    if (!ps) return false;
+    Object.assign(ps, patch);
+    // clamp
+    if (patch.stability !== undefined) ps.stability = clampStability(ps.stability);
+    if (patch.support !== undefined) ps.support = clamp(patch.support, 0, 100);
+    if (patch.warFatigueLite !== undefined) ps.warFatigueLite = clamp(patch.warFatigueLite, 0, 100);
+    ps.crisisLevel = updateCrisisLevel(ps.stability);
+    this.politics.set(countryId, ps);
+    return true;
+  }
+  debugSetRelation(from: string, to: string, value: number): void {
+    this.relations.set(`${from}->${to}`, value);
+    this.trust.set(`${from}->${to}`, value);
   }
 
   // — T5 army queries
@@ -624,6 +800,8 @@ export class SimEngine {
           { countryId: p.countryId, oldTax: old, newTax: p.taxRate, forecast: f },
           `Налог ${p.countryId}: ${(old * 100).toFixed(0)}% → ${(p.taxRate * 100).toFixed(0)}%. ${f.reason}`
         );
+        // politics hook: tax affects support/stability
+        this.applyTaxPoliticsEffect(p.countryId, old, p.taxRate);
         break;
       }
       case "setWeights": {
@@ -652,6 +830,7 @@ export class SimEngine {
           { countryId: p.countryId, oldWeights: old, newWeights: p.weights, forecast: f },
           `Веса расходов ${p.countryId} изменены. ${f.reason}`
         );
+        this.applyWeightsPoliticsEffect(p.countryId, old, p.weights);
         break;
       }
       case "startProject": {
@@ -770,6 +949,8 @@ export class SimEngine {
         );
         // update war exhaustion immediately
         this.updateAllWarExhaustion();
+        // politics hook: loss/gain affects stability, support
+        this.applyRegionLossPoliticsEffect(current, newCtrl, regionId);
         break;
       }
       case "cancelProject": {
@@ -822,10 +1003,36 @@ export class SimEngine {
           this.log.append(this.getDate(), "commandRejected", { command: cmd, reason: res.reason }, res.reason);
           return res;
         }
+        // politics: increase war fatigue-lite for participants
+        {
+          const p = cmd.payload as { attacker: string; defender: string };
+          this.adjustWarFatigue(p.attacker, 4);
+          this.adjustWarFatigue(p.defender, 2);
+          const psAtt = this.politics.get(p.attacker);
+          if (psAtt) { psAtt.stability = clampStability(psAtt.stability - 3); psAtt.crisisLevel = updateCrisisLevel(psAtt.stability); }
+          const psDef = this.politics.get(p.defender);
+          if (psDef) { psDef.stability = clampStability(psDef.stability - 2); psDef.crisisLevel = updateCrisisLevel(psDef.stability); }
+        }
         break;
       }
       case "proposePeace": {
         const res = this.handleProposePeace(cmd.payload as Record<string, unknown>);
+        if (!res.ok) {
+          this.log.append(this.getDate(), "commandRejected", { command: cmd, reason: res.reason }, res.reason);
+          return res;
+        }
+        break;
+      }
+      case "changeRegime": {
+        const res = this.handleChangeRegime(cmd.payload as Record<string, unknown>);
+        if (!res.ok) {
+          this.log.append(this.getDate(), "commandRejected", { command: cmd, reason: res.reason }, res.reason);
+          return res;
+        }
+        break;
+      }
+      case "changeLeader": {
+        const res = this.handleChangeLeader(cmd.payload as Record<string, unknown>);
         if (!res.ok) {
           this.log.append(this.getDate(), "commandRejected", { command: cmd, reason: res.reason }, res.reason);
           return res;
@@ -1332,6 +1539,151 @@ export class SimEngine {
     return { ok: true };
   }
 
+  // — T7 politics handlers
+  private handleChangeRegime(payload: Record<string, unknown>): ValidationResult {
+    const countryId = payload.countryId as string;
+    const newRegimeRaw = payload.newRegime as string;
+    const newRegime = newRegimeRaw as RegimeId;
+    const ps = this.politics.get(countryId);
+    if (!ps) return { ok: false, reason: `${POLITICS_RULES.messages.unknownCountry}: ${countryId}` };
+    const eco = this.economies.get(countryId);
+    const treasury = eco ? eco.treasury : 0;
+    const atWar = this.getWarsForCountry(countryId).some((w) => w.status === "active");
+    const capLost = this.isCapitalLost(countryId);
+    const forecast = forecastRegimeChangePure(ps, newRegime, this.getDate(), this.getDaysElapsed(), treasury, atWar, capLost, this.rng);
+    if (!forecast.ok) return { ok: false, reason: forecast.unavailableReason ?? forecast.reason };
+    // pay cost
+    const cost = forecast.cost.treasury;
+    if (eco) {
+      if (eco.treasury >= cost) eco.treasury = Math.round((eco.treasury - cost) * 100) / 100;
+      else {
+        const need = cost - eco.treasury;
+        eco.treasury = 0;
+        eco.debt = Math.round((eco.debt + need) * 100) / 100;
+      }
+      eco.lastChangeReason = `Смена режима ${ps.regime}→${newRegime}: стоимость ${cost}₥, −${forecast.cost.stabilityPenalty} стабильности`;
+    }
+    const ce = this.countryEconomy.get(countryId);
+    if (ce) ce.treasury -= cost;
+    // immediate stability hit
+    ps.stability = clampStability(ps.stability - forecast.cost.stabilityPenalty);
+    ps.crisisLevel = updateCrisisLevel(ps.stability);
+    // schedule pending change
+    ps.pendingRegimeChange = { newRegime, effectiveDay: this.getDaysElapsed() + (forecast.lagDays ?? 270), effectiveDate: forecast.effectiveDate! };
+    ps.regimeCooldownUntil = forecast.cooldownUntil;
+    this.politics.set(countryId, ps);
+    this.log.append(
+      this.getDate(),
+      "regimeChangeScheduled",
+      { countryId, from: ps.regime, to: newRegime, cost, stabilityPenalty: forecast.cost.stabilityPenalty, lagDays: forecast.lagDays, effectiveDate: forecast.effectiveDate, cooldownUntil: forecast.cooldownUntil },
+      `режим ${countryId}: ${ps.regime} → ${newRegime} запланирован. Цена ${cost}₥, −${forecast.cost.stabilityPenalty} стабильности, эффект ${forecast.effectiveDate} через ${forecast.lagDays} дн., кулдаун до ${forecast.cooldownUntil}`
+    );
+    this.log.append(this.getDate(), "stabilityChanged", { countryId, stability: ps.stability, reason: "regimeChange immediate penalty" }, `стабильность ${countryId} ${ps.stability} (−${forecast.cost.stabilityPenalty} за смену режима)`);
+    return { ok: true };
+  }
+
+  private handleChangeLeader(payload: Record<string, unknown>): ValidationResult {
+    const countryId = payload.countryId as string;
+    const newLeaderId = payload.newLeaderId as string;
+    const ps = this.politics.get(countryId);
+    if (!ps) return { ok: false, reason: `${POLITICS_RULES.messages.unknownCountry}: ${countryId}` };
+    const leadersEntry = this.scenario.leaders.find((l) => l.countryId === countryId);
+    const poolNames = leadersEntry ? leadersEntry.pool.map((p) => p.name) : [];
+    // include incumbent's alternative pool + incumbent itself? For validation we accept pool only (not already incumbent)
+    const forecast = forecastLeaderChangePure(ps, newLeaderId, poolNames);
+    if (!forecast.ok) return { ok: false, reason: forecast.unavailableReason ?? forecast.reason };
+    const oldLeader = ps.leaderId;
+    const oldSupport = ps.support;
+    // find title for new leader (from pool or leaders data)
+    let newTitle = "Leader";
+    if (leadersEntry) {
+      const poolMatch = leadersEntry.pool.find((pp) => pp.name === newLeaderId);
+      if (poolMatch) newTitle = poolMatch.title;
+      else if (leadersEntry.incumbent.name === newLeaderId) newTitle = leadersEntry.incumbent.title;
+    }
+    ps.leaderId = newLeaderId;
+    ps.leaderTitle = newTitle;
+    // small support drift: random direction via RNG ? small drift +2.5 or -1.5 etc. Use RNG to pick sign
+    const drift = POLITICS_RULES.regimeChange.leaderChangeSupportDrift;
+    const sign = this.rng.next() < 0.5 ? 1 : -1;
+    const delta = sign * drift * (0.5 + this.rng.next()*0.5); // 0.5*drift..drift
+    ps.support = clamp(oldSupport + delta, 0, 100);
+    // stability slight: persona change shouldn't hurt stability much, but minor -0.5? Keep stable.
+    this.politics.set(countryId, ps);
+    this.log.append(
+      this.getDate(),
+      "leaderChanged",
+      { countryId, oldLeader, newLeader: newLeaderId, supportBefore: oldSupport, supportAfter: ps.support, drift: delta },
+      `лидер ${countryId}: ${oldLeader} → ${newLeaderId} (внутри режима ${ps.regime}). Поддержка ${oldSupport.toFixed(1)}→${ps.support.toFixed(1)} (${delta >=0?"+":""}${delta.toFixed(1)})`
+    );
+    return { ok: true };
+  }
+
+  private applyTaxPoliticsEffect(countryId: string, oldTax: number, newTax: number): void {
+    const ps = this.politics.get(countryId);
+    if (!ps) return;
+    const delta = newTax - oldTax;
+    // high tax reduces support and stability a bit
+    if (delta > 0) {
+      const supportDelta = -delta * POLITICS_RULES.election.retainCoeffs.supportWeight * 20; // scale
+      const stabilityDelta = -delta * 12;
+      ps.support = clamp(ps.support + supportDelta, 0, 100);
+      ps.stability = clampStability(ps.stability + stabilityDelta);
+      ps.crisisLevel = updateCrisisLevel(ps.stability);
+      if (Math.abs(supportDelta) > 0.5) {
+        this.log.append(this.getDate(), "supportChanged", { countryId, support: ps.support, reason: "tax increase", delta: supportDelta }, `поддержка ${countryId} ${supportDelta >=0?"+":""}${supportDelta.toFixed(1)} из-за налога ${(oldTax*100).toFixed(0)}%→${(newTax*100).toFixed(0)}%`);
+      }
+    } else if (delta < 0) {
+      const supportDelta = -delta * 8;
+      ps.support = clamp(ps.support + supportDelta, 0, 100);
+      ps.stability = clampStability(ps.stability + 1);
+      ps.crisisLevel = updateCrisisLevel(ps.stability);
+    }
+  }
+
+  private applyWeightsPoliticsEffect(countryId: string, old: import("./economy.js").ExpenseWeights, nw: import("./economy.js").ExpenseWeights): void {
+    const ps = this.politics.get(countryId);
+    if (!ps) return;
+    // social down => support down, stability down
+    const socialDelta = nw.social - old.social;
+    const infraDelta = nw.infra - old.infra;
+    if (Math.abs(socialDelta) > 1e-9) {
+      const supportDelta = socialDelta * 10;
+      const stabilityDelta = socialDelta * 6;
+      ps.support = clamp(ps.support + supportDelta, 0, 100);
+      ps.stability = clampStability(ps.stability + stabilityDelta);
+    }
+    if (infraDelta < -0.2) {
+      ps.stability = clampStability(ps.stability - 1.5);
+    }
+    ps.crisisLevel = updateCrisisLevel(ps.stability);
+  }
+
+  private applyRegionLossPoliticsEffect(loserId: string, winnerId: string, regionId: string): void {
+    const psLoser = this.politics.get(loserId);
+    const psWinner = this.politics.get(winnerId);
+    if (psLoser) {
+      psLoser.stability = clampStability(psLoser.stability - 2.2);
+      psLoser.support = clamp(psLoser.support - 1.2, 0, 100);
+      psLoser.crisisLevel = updateCrisisLevel(psLoser.stability);
+      psLoser.warFatigueLite = clamp(psLoser.warFatigueLite + 1.5, 0, 100);
+      this.log.append(this.getDate(), "stabilityChanged", { countryId: loserId, stability: psLoser.stability, reason: "regionLost", regionId }, `стабильность ${loserId} ${psLoser.stability.toFixed(1)} — потеря региона ${regionId}`);
+      if (psLoser.stability < POLITICS_RULES.crisis.warningThreshold) {
+        this.log.append(this.getDate(), "crisisWarning", { countryId: loserId, stability: psLoser.stability, reason: `потеря региона ${regionId}`, level: psLoser.crisisLevel }, `⚠ кризис: стабильность ${loserId} ${psLoser.stability.toFixed(1)} < ${POLITICS_RULES.crisis.warningThreshold} (потеря региона)`);
+      }
+    }
+    if (psWinner) {
+      // winner slight support boost but fatigue as well?
+      psWinner.support = clamp(psWinner.support + 0.6, 0, 100);
+    }
+  }
+
+  private adjustWarFatigue(countryId: string, delta: number): void {
+    const ps = this.politics.get(countryId);
+    if (!ps) return;
+    ps.warFatigueLite = clamp(ps.warFatigueLite + delta, 0, POLITICS_RULES.crisis.warFatigueMax);
+  }
+
   // — time
 
   private checkProjectCompletions(): void {
@@ -1395,9 +1747,213 @@ export class SimEngine {
     }
   }
 
+  private checkPendingRegimeChanges(): void {
+    const nowDay = this.getDaysElapsed();
+    const nowDate = this.getDate();
+    for (const ps of this.politics.values()) {
+      if (ps.pendingRegimeChange && nowDay >= ps.pendingRegimeChange.effectiveDay) {
+        const prev = ps.regime;
+        const next = ps.pendingRegimeChange.newRegime;
+        ps.regime = next;
+        const pending = ps.pendingRegimeChange;
+        ps.pendingRegimeChange = null;
+        this.log.append(nowDate, "regimeChanged", { countryId: ps.countryId, from: prev, to: next, effectiveDay: pending.effectiveDay }, `режим ${ps.countryId}: ${prev} → ${next} вступил в силу ${nowDate} (лаг ${pending.effectiveDay - (nowDay - (pending.effectiveDay - this.getDaysElapsed()))} дн.)`);
+        // small support adjustment on new regime effect? stability already hit at schedule time; now slight support drift based on regime popularity?
+        // apply regime base support difference? Keep subtle.
+        // No cooldown change — already set
+      }
+    }
+  }
+
+  private processElections(): void {
+    const nowDate = this.getDate();
+    for (const ps of this.politics.values()) {
+      if (nowDate !== ps.nextElectionDate) continue;
+      // election day
+      const eco = this.economies.get(ps.countryId);
+      const economyFactor = eco ? computeEconomyFactorForElection(eco.treasury, eco.debt, eco.gdp, eco.lastGrowthRate, eco.lastIncome, eco.lastExpense) : 0;
+      const input = { support: ps.support, stability: ps.stability, warFatigueLite: ps.warFatigueLite, economyFactor, regime: ps.regime as RegimeId };
+      const result = evaluateElectionRetain(input, this.rng);
+      // choose challenger party
+      const parties = this.scenario.parties.filter((p) => p.countryId === ps.countryId);
+      const incumbentParty = parties.find((p) => p.partyId === ps.partyId);
+      let challenger = parties.find((p) => p.partyId !== ps.partyId);
+      if (!challenger) challenger = parties[0];
+      // if multiple challengers, pick via RNG among non-incumbent
+      const alternatives = parties.filter((p) => p.partyId !== ps.partyId);
+      if (alternatives.length > 1) {
+        const idx = this.rng.nextInt(0, alternatives.length - 1);
+        challenger = alternatives[idx];
+      }
+      // Determine winner
+      const oldPartyId = ps.partyId;
+      const oldLeader = ps.leaderId;
+      const oldRegime = ps.regime;
+      let newPartyId = oldPartyId;
+      let newLeader = oldLeader;
+      let newRegime = oldRegime as string;
+      let changed = false;
+      // Reason strings
+      const electionReasons = [...result.reasons, `бросок RNG ${result.roll.toFixed(3)} vs порог ${result.retainP.toFixed(2)} → ${result.retain ? "удержание" : "смена"}`];
+      if (result.retain) {
+        // incumbent stays
+        newPartyId = oldPartyId;
+        // party stays, ledger not changed
+        this.log.append(nowDate, "electionResult", { countryId: ps.countryId, retain: true, retainP: result.retainP, roll: result.roll, breakdown: result.breakdown, reasons: electionReasons, oldPartyId, newPartyId, oldLeader, newLeader, oldRegime, newRegime, regimeModifier: result.regimeModifier, support: ps.support, stability: ps.stability, fatigue: ps.warFatigueLite }, `выборы ${ps.countryId} ${nowDate}: партия ${oldPartyId} удержала власть (лидер ${oldLeader}). Причины: ${electionReasons.join("; ")}. ${result.breakdown}`);
+        // slight stability boost for retained? minor +1
+        ps.stability = clampStability(ps.stability + 1.1);
+        ps.support = clamp(ps.support + 0.8, 0, 100);
+      } else {
+        // challenger wins
+        if (challenger) {
+          newPartyId = challenger.partyId;
+          newLeader = challenger.candidate;
+          newRegime = challenger.regimePreference;
+          changed = true;
+        }
+        ps.partyId = newPartyId;
+        ps.leaderId = newLeader;
+        // update leaderTitle from leaders/pool
+        const leadersEntry = this.scenario.leaders.find((l) => l.countryId === ps.countryId);
+        let newTitle = challenger ? challenger.nameRu ?? challenger.name : "Leader";
+        if (leadersEntry) {
+          const poolMatch = leadersEntry.pool.find((pp) => pp.name === newLeader);
+          if (poolMatch) newTitle = poolMatch.title;
+          else if (leadersEntry.incumbent.name === newLeader) newTitle = leadersEntry.incumbent.title;
+          else newTitle = challenger ? challenger.name : newTitle;
+        }
+        ps.leaderTitle = newTitle;
+        // if regimePreference differs, regime shifts (election-driven)
+        if (newRegime !== oldRegime) {
+          ps.regime = newRegime as RegimeId;
+          this.log.append(nowDate, "regimeChangedByElection", { countryId: ps.countryId, from: oldRegime, to: newRegime, partyId: newPartyId }, `режим ${ps.countryId} сменился выборами: ${oldRegime} → ${newRegime} (партия ${newPartyId})`);
+        }
+        // stability hit on loss (and for any change)
+        const hit = POLITICS_RULES.regimeChange.stabilityHitOnElectionLoss;
+        ps.stability = clampStability(ps.stability - hit);
+        // support resets toward new regime base? Drift a bit
+        // Apply foreignStance deltas to relations/trust
+        if (challenger && changed) {
+          const deltas = (challenger as unknown as { foreignStance: Record<string, number> }).foreignStance ?? {};
+          const applied: Array<{ to: string; delta: number; beforeRel: number; afterRel: number; beforeTrust: number; afterTrust: number }> = [];
+          for (const [otherCode, delta] of Object.entries(deltas)) {
+            // otherCode is countryCode like GB, FR etc. Need to map to countryId same as code
+            const otherId = otherCode;
+            if (otherId === ps.countryId) continue;
+            // check other country exists
+            if (!this.politics.has(otherId)) continue;
+            const key = `${ps.countryId}->${otherId}`;
+            const beforeRel = this.relations.get(key) ?? 50;
+            const beforeTrust = this.trust.get(key) ?? 50;
+            const afterRel = clamp(beforeRel + delta, 0, 100);
+            const afterTrust = clamp(beforeTrust + delta, 0, 100);
+            this.relations.set(key, afterRel);
+            this.trust.set(key, afterTrust);
+            applied.push({ to: otherId, delta, beforeRel, afterRel, beforeTrust, afterTrust });
+          }
+          this.log.append(nowDate, "diplomacyShifted", { countryId: ps.countryId, newPartyId, deltas, applied }, `дипломатия ${ps.countryId} после выборов (${newPartyId}): применены stance-дельты к ${applied.length} странам`);
+          // AI reevaluation hook
+          this.log.append(nowDate, "aiReevaluated", { countryId: ps.countryId, newPartyId, reason: "electionPartyChange", appliedCount: applied.length }, `ИИ переоценил угрозы/сделки для ${ps.countryId} после смены партии ${newPartyId}`);
+        }
+        const msgChanged = changed ? `— смена: ${oldPartyId}→${newPartyId}, лидер ${oldLeader}→${newLeader}${newRegime!==oldRegime?`, режим ${oldRegime}→${newRegime}`:""}.` : "— несмотря на проигрыш, партия не сменилась (нет альтернативы)";
+        this.log.append(nowDate, "electionResult", { countryId: ps.countryId, retain: false, retainP: result.retainP, roll: result.roll, breakdown: result.breakdown, reasons: electionReasons, oldPartyId, newPartyId, oldLeader, newLeader, oldRegime, newRegime, changed, support: ps.support, stability: ps.stability, fatigue: ps.warFatigueLite }, `выборы ${ps.countryId} ${nowDate}: партия ${oldPartyId} проиграла → ${newPartyId} (лидер ${newLeader}) ${msgChanged} Причины: ${electionReasons.join("; ")}. ${result.breakdown}`);
+        if (!result.retain) {
+          this.log.append(nowDate, "stabilityChanged", { countryId: ps.countryId, stability: ps.stability, reason: "electionLoss", hit }, `стабильность ${ps.countryId} ${ps.stability.toFixed(1)} (−${hit} за проигрыш выборов)`);
+        }
+      }
+      // advance nextElectionDate
+      const countryMeta = this.scenario.countries.find((c) => c.countryId === ps.countryId);
+      if (countryMeta) {
+        const next = nextElectionAfter(nowDate, countryMeta.electionMonth, countryMeta.electionDay);
+        ps.nextElectionDate = next;
+      } else {
+        // fallback +5y
+        const d = parseGameDate(nowDate);
+        d.setUTCFullYear(d.getUTCFullYear() + 5);
+        const y = d.getUTCFullYear();
+        // keep original month/day fallback
+        const m = String(ps.nextElectionDate.slice(5,7));
+        const day = String(ps.nextElectionDate.slice(8,10));
+        ps.nextElectionDate = `${y}-${m}-${day}`;
+      }
+      ps.lastElectionDate = nowDate;
+      ps.crisisLevel = updateCrisisLevel(ps.stability);
+      // sync support with economy's lastSupport? Keep politics support as primary but also reflect economy drift slightly
+      // We'll not overwrite, but keep as is; UI can show both.
+
+      // ensure not game-over: we just continue
+    }
+  }
+
+  private processDailyPolitics(): void {
+    const nowDate = this.getDate();
+    for (const ps of this.politics.values()) {
+      const cid = ps.countryId;
+      // war fatigue drift
+      const atWar = this.getWarsForCountry(cid).some((w) => w.status === "active");
+      if (atWar) {
+        const factor = (POLITICS_RULES.regimes as Record<string,{warFatigueFactor:number}>)[ps.regime]?.warFatigueFactor ?? 1;
+        const inc = POLITICS_RULES.crisis.warFatigueDailyIncrease * factor;
+        ps.warFatigueLite = clamp(ps.warFatigueLite + inc, 0, POLITICS_RULES.crisis.warFatigueMax);
+      } else {
+        ps.warFatigueLite = clamp(ps.warFatigueLite - POLITICS_RULES.crisis.warFatigueDailyDecay, 0, POLITICS_RULES.crisis.warFatigueMax);
+      }
+      // economy influence on stability/support (monthly already via hooks, but daily drift for debt)
+      const eco = this.economies.get(cid);
+      if (eco) {
+        // keep support loosely synced with eco lastSupport: move 0.02 per day toward eco value
+        const targetSupport = eco.lastSupport;
+        const diff = targetSupport - ps.support;
+        ps.support = clamp(ps.support + diff * 0.04, 0, 100);
+        // debt high reduces stability drift
+        if (eco.debt > 200) {
+          ps.stability = clampStability(ps.stability - 0.02);
+        } else if (eco.treasury > 600 && ps.stability < 70) {
+          // recovery when treasury healthy
+          ps.stability = clampStability(ps.stability + 0.008);
+        }
+        // deficit high (income < expense) also pressure
+        if (eco.lastIncome < eco.lastExpense) {
+          ps.stability = clampStability(ps.stability - 0.012);
+        }
+      }
+      // low stability gradual crisis
+      if (ps.stability < POLITICS_RULES.crisis.warningThreshold) {
+        // drift
+        const drift = ps.stability < POLITICS_RULES.crisis.criticalThreshold ? POLITICS_RULES.crisis.dailyDriftCritical : POLITICS_RULES.crisis.dailyDriftWarning;
+        ps.stability = clampStability(ps.stability + drift);
+        // recovery chance via seeded RNG
+        if (this.rng.next() < POLITICS_RULES.crisis.recoveryChance) {
+          ps.stability = clampStability(ps.stability + POLITICS_RULES.crisis.recoveryAmount);
+          this.log.append(nowDate, "crisisRecovery", { countryId: cid, stability: ps.stability }, `кризис ${cid}: шанс восстановления, стабильность → ${ps.stability.toFixed(1)}`);
+        }
+        // warning if crossing or periodic
+        const shouldWarn = this.tickCount % 14 === 0 || ps.stability < POLITICS_RULES.crisis.criticalThreshold;
+        if (shouldWarn) {
+          this.log.append(nowDate, "crisisWarning", { countryId: cid, stability: ps.stability, support: ps.support, fatigue: ps.warFatigueLite, level: ps.crisisLevel, threshold: POLITICS_RULES.crisis.warningThreshold }, `⚠ кризис: стабильность ${cid} ${ps.stability.toFixed(1)} < ${POLITICS_RULES.crisis.warningThreshold} (уровень ${ps.crisisLevel}). Требуется действие — налоги/соц/мир.`);
+        }
+      } else {
+        // slight passive recovery toward regime base when stable
+        const base = (POLITICS_RULES.regimes as Record<string,{stabilityBase:number}>)[ps.regime]?.stabilityBase ?? 60;
+        if (ps.stability < base) {
+          ps.stability = clampStability(ps.stability + 0.015);
+        } else if (ps.stability > base + 8) {
+          ps.stability = clampStability(ps.stability - 0.01);
+        }
+      }
+      // occupation effect: if country has lost regions (controller != owner where owner==cid), increase fatigue and reduce stability a bit
+      const lostCount = Array.from(this.regionStates.values()).filter((rs) => rs.ownerId === cid && rs.controllerId !== cid).length;
+      if (lostCount > 0) {
+        ps.warFatigueLite = clamp(ps.warFatigueLite + 0.05 * lostCount, 0, 100);
+        if (this.tickCount % 10 === 0) ps.stability = clampStability(ps.stability - 0.05 * lostCount);
+      }
+      ps.crisisLevel = updateCrisisLevel(ps.stability);
+    }
+  }
+
   /**
    * Advance simulation by integer game days.
-   * Union tick: daily army (recruitment + upkeep) + project completions + monthly economy at day 1 + war exhaustion
+   * Union tick: daily army (recruitment + upkeep) + project completions + monthly economy at day 1 + war exhaustion + politics (elections/pending/crisis)
    */
   tick(days: number): void {
     if (!Number.isInteger(days) || days < 0) {
@@ -1412,10 +1968,14 @@ export class SimEngine {
       this.checkProjectCompletions();
       this.processDailyArmyTick();
       this.updateAllWarExhaustion();
+      this.checkPendingRegimeChanges();
+      this.processElections();
+      this.processDailyPolitics();
       const dateStr = this.getDate();
       const day = Number(dateStr.slice(8, 10));
       if (day === 1) {
         this.runMonthlyEconomyTick();
+        // after monthly economy, sync politics support a bit more strongly? Already in daily
       }
       if (this.tickCount === 1 || this.tickCount % 30 === 0) {
         this.log.append(this.getDate(), "dayTick", { daysElapsed: this.getDaysElapsed(), dailyRand });
