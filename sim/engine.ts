@@ -73,6 +73,7 @@ import {
   updateCrisisLevel,
 } from "./politics.js";
 import { parseGameDate } from "./calendar.js";
+import type { SaveV1, SerializedEconomy } from "./save.js";
 
 function clamp(n: number, min: number, max: number): number { return Math.max(min, Math.min(max, n)); }
 
@@ -116,6 +117,11 @@ export class SimEngine {
   private politics: Map<string, PoliticalState> = new Map();
   private relations: Map<string, number> = new Map(); // directed "A->B" 0..100 (50 neutral)
   private trust: Map<string, number> = new Map(); // directed
+
+  // T8 AI + saves
+  private playerCountryId: string | null = null;
+  private aiProfiles: Map<string, string> = new Map(); // countryId -> profileId
+  private aiLastRun: Map<string, number> = new Map(); // countryId -> last daysElapsed
 
   constructor(config?: { seed?: number; startDate?: string }) {
     const seed = config?.seed ?? DEFAULT_SEED;
@@ -356,6 +362,35 @@ export class SimEngine {
 
   getEventLogTail(n: number): readonly import("./types.js").SimEvent[] {
     return this.log.getTail(n);
+  }
+
+  // — T8 AI + saves helpers
+  setPlayerCountryId(id: string | null): void {
+    this.playerCountryId = id;
+  }
+  getPlayerCountryId(): string | null {
+    return this.playerCountryId;
+  }
+  setAiProfile(countryId: string, profile: string): void {
+    this.aiProfiles.set(countryId, profile);
+  }
+  getAiProfile(countryId: string): string | null {
+    return this.aiProfiles.get(countryId) ?? null;
+  }
+  getAllAiProfiles(): Record<string, string> {
+    const out: Record<string, string> = {};
+    for (const [k, v] of this.aiProfiles) out[k] = v;
+    return out;
+  }
+  appendEvent(kind: string, payload: unknown, message?: string): void {
+    this.log.append(this.getDate(), kind, payload, message);
+  }
+  /** Expose for AI interval tracking */
+  getAiLastRun(countryId: string): number | undefined {
+    return this.aiLastRun.get(countryId);
+  }
+  setAiLastRun(countryId: string, day: number): void {
+    this.aiLastRun.set(countryId, day);
   }
 
   // — economy queries (T4)
@@ -2004,6 +2039,196 @@ export class SimEngine {
         this.log.append(this.getDate(), "treasuryWarning", { countryId: unit.countryId, treasury: econ.treasury }, `казна ${unit.countryId} отрицательна: ${econ.treasury.toFixed(2)}`);
       }
     }
+  }
+
+  // — T8 persistence helpers (used by sim/save.ts)
+  toSave(): SaveV1 {
+    const economies: Record<string, SerializedEconomy> = {};
+    for (const [cid, eco] of this.economies) {
+      economies[cid] = {
+        countryId: eco.countryId,
+        treasury: eco.treasury,
+        debt: eco.debt,
+        gdp: eco.gdp,
+        taxRate: eco.taxRate,
+        weights: { ...eco.weights },
+        activeProjects: eco.activeProjects.map((p) => ({ ...p })),
+        completedProjects: eco.completedProjects.map((p) => ({ ...p })),
+        eduHistory: [...eco.eduHistory],
+        lastIncome: eco.lastIncome,
+        lastExpense: eco.lastExpense,
+        lastInterest: eco.lastInterest,
+        lastGrowthRate: eco.lastGrowthRate,
+        lastSupport: eco.lastSupport,
+        controlledRegions: Array.from(eco.controlledRegions),
+        lastChangeReason: eco.lastChangeReason,
+      };
+    }
+    const regions: SaveV1["regions"] = [];
+    for (const rs of this.regionStates.values()) {
+      regions.push({
+        regionId: rs.regionId,
+        ownerId: rs.ownerId,
+        controllerId: rs.controllerId,
+        terrain: rs.terrain,
+        fortLevel: rs.fortLevel,
+        isCapitalRegion: rs.isCapitalRegion,
+        countryId: rs.countryId,
+      });
+    }
+    const units: SaveV1["units"] = [];
+    for (const u of this.units.values()) units.push({ ...u });
+    const wars: SaveV1["wars"] = [];
+    for (const w of this.wars.values()) wars.push({ ...w });
+    const politics: SaveV1["politics"] = {};
+    for (const [cid, ps] of this.politics) {
+      politics[cid] = {
+        countryId: ps.countryId,
+        regime: ps.regime,
+        leaderId: ps.leaderId,
+        leaderTitle: ps.leaderTitle,
+        partyId: ps.partyId,
+        stability: ps.stability,
+        support: ps.support,
+        warFatigueLite: ps.warFatigueLite,
+        nextElectionDate: ps.nextElectionDate,
+        regimeCooldownUntil: ps.regimeCooldownUntil,
+        pendingRegimeChange: ps.pendingRegimeChange ? { ...ps.pendingRegimeChange } : null,
+        crisisLevel: ps.crisisLevel,
+        lastElectionDate: ps.lastElectionDate,
+      };
+    }
+    const relations: Record<string, number> = {};
+    for (const [k, v] of this.relations) relations[k] = v;
+    const trust: Record<string, number> = {};
+    for (const [k, v] of this.trust) trust[k] = v;
+    const threats: Record<string, number> = {};
+    for (const [k, v] of this.threat) threats[k] = v;
+    const countryEconomy: Record<string, { treasury: number; population: number; equipmentStock: number }> = {};
+    for (const [k, v] of this.countryEconomy) countryEconomy[k] = { ...v };
+    return {
+      version: 1,
+      seed: this.seed,
+      date: this.getDate(),
+      daysElapsed: this.getDaysElapsed(),
+      tickCount: this.tickCount,
+      rngState: this.rng.getState(),
+      customState: { ...this.customState },
+      nextIds: { nextUnitSeq: this.nextUnitSeq, nextProjectId: this.nextProjectId, nextWarId: this.nextWarId },
+      economies,
+      countryEconomy,
+      regions,
+      units,
+      wars,
+      threats,
+      politics,
+      relations,
+      trust,
+      logTail: this.log.getTail(100).map((e) => ({ ...e })),
+      playerCountryId: this.playerCountryId,
+      aiProfiles: Object.fromEntries(this.aiProfiles.entries()),
+      aiLastRun: Object.fromEntries(this.aiLastRun.entries()),
+    };
+  }
+
+  restoreFromSave(save: SaveV1): void {
+    // calendar
+    const [y, m, d] = save.date.split("-").map(Number);
+    (this.calendar as unknown as { current: Date; _daysElapsed: number }).current = new Date(Date.UTC(y, m - 1, d));
+    (this.calendar as unknown as { _daysElapsed: number })._daysElapsed = save.daysElapsed;
+    this.rng.setState(save.rngState);
+    this.tickCount = save.tickCount;
+    this.customState = { ...save.customState };
+    this.nextUnitSeq = save.nextIds.nextUnitSeq;
+    this.nextProjectId = save.nextIds.nextProjectId;
+    this.nextWarId = save.nextIds.nextWarId;
+    this.playerCountryId = save.playerCountryId ?? null;
+    this.aiProfiles = new Map(Object.entries(save.aiProfiles ?? {}));
+    this.aiLastRun = new Map(Object.entries(save.aiLastRun ?? {}).map(([k, v]) => [k, v as number]));
+
+    this.economies.clear();
+    for (const [cid, se] of Object.entries(save.economies)) {
+      this.economies.set(cid, {
+        countryId: se.countryId,
+        treasury: se.treasury,
+        debt: se.debt,
+        gdp: se.gdp,
+        taxRate: se.taxRate,
+        weights: { ...se.weights },
+        activeProjects: se.activeProjects.map((p) => ({ ...p } as unknown as import("./economy.js").Project)),
+        completedProjects: se.completedProjects.map((p) => ({ ...p } as unknown as import("./economy.js").Project)),
+        eduHistory: [...se.eduHistory],
+        lastIncome: se.lastIncome,
+        lastExpense: se.lastExpense,
+        lastInterest: se.lastInterest,
+        lastGrowthRate: se.lastGrowthRate,
+        lastSupport: se.lastSupport,
+        controlledRegions: new Set(se.controlledRegions),
+        lastChangeReason: se.lastChangeReason,
+      });
+    }
+    this.regionController.clear();
+    this.regionStates.clear();
+    this.capitalRegionByCountry.clear();
+    for (const r of save.regions) {
+      this.regionController.set(r.regionId, r.controllerId);
+      this.regionStates.set(r.regionId, {
+        regionId: r.regionId,
+        countryId: r.countryId,
+        ownerId: r.ownerId,
+        controllerId: r.controllerId,
+        terrain: r.terrain as RegionState["terrain"],
+        fortLevel: r.fortLevel,
+        isCapitalRegion: r.isCapitalRegion,
+      });
+      if (r.isCapitalRegion && !this.capitalRegionByCountry.has(r.countryId)) {
+        this.capitalRegionByCountry.set(r.countryId, r.regionId);
+      }
+      if (r.isCapitalRegion && !this.capitalRegionByCountry.has(r.ownerId)) {
+        // fallback for loaded where countryId maybe not unique
+      }
+    }
+    // Ensure capital map complete via scenario fallback
+    for (const c of this.scenario.countries) {
+      if (!this.capitalRegionByCountry.has(c.countryId)) {
+        const reg = save.regions.find((rr) => rr.countryId === c.countryId && rr.isCapitalRegion);
+        if (reg) this.capitalRegionByCountry.set(c.countryId, reg.regionId);
+      }
+    }
+
+    this.countryEconomy.clear();
+    for (const [cid, v] of Object.entries(save.countryEconomy)) this.countryEconomy.set(cid, { ...v });
+
+    this.units.clear();
+    for (const u of save.units) this.units.set(u.unitId, { ...u } as ArmyUnit);
+
+    this.wars.clear();
+    for (const w of save.wars) this.wars.set(w.warId, { ...w } as War);
+
+    this.threat.clear();
+    for (const [k, v] of Object.entries(save.threats)) this.threat.set(k, v);
+
+    this.politics.clear();
+    for (const [cid, ps] of Object.entries(save.politics)) {
+      this.politics.set(cid, { ...ps, pendingRegimeChange: ps.pendingRegimeChange ? { ...ps.pendingRegimeChange } : null } as PoliticalState);
+    }
+    this.relations.clear();
+    for (const [k, v] of Object.entries(save.relations)) this.relations.set(k, v);
+    this.trust.clear();
+    for (const [k, v] of Object.entries(save.trust)) this.trust.set(k, v);
+
+    this.log.clear();
+    for (const e of save.logTail) this.log.append(e.date, e.kind, e.payload, e.message);
+    if (save.logTail.length > 0) {
+      const maxId = Math.max(...save.logTail.map((e) => e.id));
+      (this.log as unknown as { nextId: number }).nextId = maxId + 1;
+    }
+  }
+
+  static fromSave(save: SaveV1): SimEngine {
+    const sim = new SimEngine({ seed: save.seed, startDate: "2026-01-01" });
+    sim.restoreFromSave(save);
+    return sim;
   }
 }
 

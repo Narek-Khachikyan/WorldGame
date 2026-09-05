@@ -173,6 +173,65 @@ export default function SidePanel() {
               <PoliticsPanel countryId={selectedCountry.countryId} />
             </div>
 
+            {/* T8 AI status + profile selector — shows for AI-controlled (all except player) */}
+            {(() => {
+              const isPlayer = playerCountryId === selectedCountry.countryId;
+              const aiProfile = sim.getAiProfile(selectedCountry.countryId) ?? ((): string => {
+                // derive fallback via hash like ai.ts: even -> cautious
+                const order = ["AT","BY","CZ","DE","ES","FR","GB","GR","HU","IT","PL","RO","RS","SE","TR","UA"];
+                const idx = order.indexOf(selectedCountry.countryId);
+                return idx % 2 === 0 ? "cautious" : "ambitious";
+              })();
+              const aiLast = sim.getAiLastRun(selectedCountry.countryId);
+              const aiEvents = sim.getEventLog().filter((e)=> e.kind==="aiDecision" && (e.payload as {countryId?:string})?.countryId===selectedCountry.countryId).slice(-2).reverse();
+              return (
+                <div style={{ border: `1px solid ${isPlayer ? "#e5e7eb" : "#c7d2fe"}`, borderRadius: 8, padding: "8px 10px", background: isPlayer ? "#f9fafb" : "#eff6ff" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <strong style={{ fontSize: 12 }}>ИИ — {isPlayer ? "игрок (ИИ выкл.)" : `профиль ${aiProfile}`}</strong>
+                    <span style={{ fontSize: 10, background: isPlayer ? "#f3f4f6" : "#e0e7ff", border: "1px solid #c7d2fe", padding: "2px 6px", borderRadius: 999 }}>{isPlayer ? "вы" : aiProfile === "cautious" ? "осторожный" : "амбициозный"}</span>
+                  </div>
+                  <div style={{ fontSize: 11, color: "#374151", marginTop: 4, lineHeight: 1.35 }}>
+                    {isPlayer
+                      ? "Эта страна под вашим управлением — ИИ за неё не ходит. Все остальные ИИ каждые 14 дн. + по событиям (война/мир/банкротство/выборы) действуют по тем же правилам: платят, строятся в срок, гарнизон столицы, экономика → война только при ~1.5× и выгоде. Теряет — просит мир."
+                      : `ИИ ${aiProfile} (${aiProfile==="cautious" ? "1.8×, казна 600, долг ≤150" : "1.4×, казна 250, долг ≤350"}). Стратегия каждые 14 дн. + события. Послед. ход: ${aiLast !== undefined ? `день ${aiLast}` : "— ещё не ходил"}.`}
+                  </div>
+                  {!isPlayer ? (
+                    <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+                      <button
+                        onClick={() => useGameStore.getState().setAiProfile(selectedCountry.countryId, "cautious")}
+                        data-testid={`btn-ai-profile-cautious-${selectedCountry.countryId}`}
+                        style={{ flex: 1, padding: "4px 8px", borderRadius: 6, border: aiProfile==="cautious" ? "1px solid #111827" : "1px solid #d1d5db", background: aiProfile==="cautious" ? "#111827" : "#fff", color: aiProfile==="cautious" ? "#fff" : "#111827", fontSize: 11 }}
+                      >
+                        Осторожный
+                      </button>
+                      <button
+                        onClick={() => useGameStore.getState().setAiProfile(selectedCountry.countryId, "ambitious")}
+                        data-testid={`btn-ai-profile-ambitious-${selectedCountry.countryId}`}
+                        style={{ flex: 1, padding: "4px 8px", borderRadius: 6, border: aiProfile==="ambitious" ? "1px solid #92400e" : "1px solid #d1d5db", background: aiProfile==="ambitious" ? "#92400e" : "#fff", color: aiProfile==="ambitious" ? "#fff" : "#111827", fontSize: 11 }}
+                      >
+                        Амбициозный
+                      </button>
+                    </div>
+                  ) : null}
+                  {aiEvents.length>0 ? (
+                    <div style={{ marginTop: 6, fontSize: 11, background: "#fff", border: "1px solid #e5e7eb", borderRadius: 4, padding: 6 }}>
+                      <strong>Последнее ИИ решение:</strong>
+                      {aiEvents.map((e)=> (
+                        <div key={e.id} style={{ marginTop: 4, lineHeight: 1.35 }}>
+                          <div style={{ fontSize: 10, opacity: 0.6 }}>{e.date} · {(e.payload as {cause?:string})?.cause}</div>
+                          <div>{e.message}</div>
+                          <div style={{ fontSize: 10, opacity: 0.7 }}>{JSON.stringify((e.payload as {reasons?:string[]})?.reasons?.slice(0,2))}</div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ marginTop: 6, fontSize: 11, opacity: 0.6 }}>Пока нет решений — подождите 14 дн. или событие (война/мир/выборы). Причины пишутся в журнал aiDecision.</div>
+                  )}
+                  <div style={{ fontSize: 10, color: "#6b7280", marginTop: 6, fontFamily: "monospace" }}>ИИ хук: runAIStep(sim,countryId) каждые 14 дн. per country AI-controlled (all except playerCountryId) — см. sim/ai.ts + store tickReal. Без скрытых денег/подкреплений.</div>
+                </div>
+              );
+            })()}
+
             {/* selected region details */}
             {selectedRegion ? (
               <div style={{ border: "1px solid #d1d5db", borderRadius: 8, padding: "8px 10px", background: "#f9fafb" }}>

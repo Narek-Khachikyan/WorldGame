@@ -1,0 +1,60 @@
+{
+  "_note": "Модельные коэффициенты ИИ Slice A (WB-A T8). Не выдавать за реальную статистику. Платит, строится в срок, те же лимиты. Приоритеты: не обанкротиться → гарнизон столицы → экономика → война только при ~1.5x и выгоде. 2 профиля cautious/ambitious. Факты в data/, балансы в rules/.",
+  "strategyIntervalDays": 14,
+  "profiles": {
+    "cautious": {
+      "id": "cautious",
+      "nameRu": "Осторожный",
+      "warForceRatioMin": 1.8,
+      "warTreasuryMin": 600,
+      "warDebtMax": 150,
+      "warExhaustionMax": 30,
+      "debtTolerance": 180,
+      "treasuryLowThreshold": 180,
+      "economyProjectPreference": "regionInfra",
+      "maxWarDeclarationsPerYear": 1,
+      "defendPriority": 0.9,
+      "descriptionRu": "Осторожный: избегает долгов, война только при 1.8x силы, высокой казне, низком долге и усталости."
+    },
+    "ambitious": {
+      "id": "ambitious",
+      "nameRu": "Амбициозный",
+      "warForceRatioMin": 1.4,
+      "warTreasuryMin": 250,
+      "warDebtMax": 350,
+      "warExhaustionMax": 50,
+      "debtTolerance": 320,
+      "treasuryLowThreshold": 100,
+      "economyProjectPreference": "industrialComplex",
+      "maxWarDeclarationsPerYear": 2,
+      "defendPriority": 0.7,
+      "descriptionRu": "Амбициозный: допускает долг, война при 1.4x силы, минимальная казна 250, чаще рискует."
+    }
+  },
+  "thresholds": {
+    "bankruptcy": {
+      "debtHigh": 300,
+      "treasuryLow": 120,
+      "balanceNegativeThreshold": -35,
+      "interestHigh": 30
+    },
+    "capitalGarrison": {
+      "minReadyUnits": 1,
+      "preferredPersonnel": 1200,
+      "preferredEquipment": 0.85
+    },
+    "economy": {
+      "treasuryReserveForProject": 150,
+      "idealTaxRate": 0.22,
+      "maxTaxRate": 0.45,
+      "debtTolerableForProject": 200
+    }
+  },
+  "peace": {
+    "askWhenLosingForDays": 20,
+    "exhaustionThreshold": 40
+  },
+  "messages": {
+    "aiDecision": "ИИ решение"
+  }
+}
