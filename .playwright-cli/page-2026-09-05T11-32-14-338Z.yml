@@ -1,0 +1,436 @@
+- generic [ref=e4]:
+  - generic [ref=e5]:
+    - heading "World Balance — Европа-16 (срез A)" [level=1] [ref=e6]
+    - generic [ref=e7]: PixiJS · Zustand · 16 стран · 64 регионов · политический режим
+    - generic [ref=e8]: "Вертикальный срез A-min: карта, время, выбор страны · экономика/армия — в следующих тикетах"
+  - generic [ref=e9]:
+    - generic [ref=e10]:
+      - generic [ref=e11]: Дата
+      - strong [ref=e12]: 2026-01-01
+    - generic "Казна и баланс появятся в T4 (экономика end-to-end). Сейчас — режим карты и время." [ref=e14]:
+      - generic [ref=e15]: Казна
+      - generic [ref=e16]: 800 ₵
+    - generic "Доходы/расходы и помесячный тик — в T4. Сейчас показывает «—» с объяснением." [ref=e17]:
+      - generic [ref=e18]: Баланс
+      - generic [ref=e19]: "-32,5/мес"
+    - generic [ref=e21]:
+      - button "Пауза" [ref=e22] [cursor=pointer]
+      - button "Медленно · 1 дн/сек" [ref=e23] [cursor=pointer]
+      - button "Нормально · 3 дн/сек" [disabled] [ref=e24]
+      - button "Быстро · 7 дн/сек" [ref=e25] [cursor=pointer]
+    - generic [ref=e26]:
+      - generic "Нет активных войн. Объявление войны и условия мира — в T6. Разблокируется после армии (T5)." [ref=e27]:
+        - generic [ref=e28]: "Войны:"
+        - strong [ref=e29]: "0"
+        - generic [ref=e30]: — нет
+      - generic "Нет активных строек. 3 типа проектов (пром, энерго, инфра) появятся в T4." [ref=e31]:
+        - generic [ref=e32]: "Стройки:"
+        - strong [ref=e33]: "0"
+        - generic [ref=e34]: — нет
+      - generic [ref=e35]: seed 42 · 0 дн. · тиков 0
+  - generic [ref=e36]:
+    - generic [ref=e37]: "Режимы карты A: политический + военный"
+    - generic [ref=e38]:
+      - button "Политический" [ref=e39] [cursor=pointer]
+      - button "Военный" [ref=e40] [cursor=pointer]
+    - generic [ref=e41]: Колёсико — зум · перетаскивание — пан · двойной клик — сброс
+    - button "Скрыть выбор" [ref=e43] [cursor=pointer]
+  - generic [ref=e44]:
+    - generic [ref=e45]:
+      - heading "Выберите страну — Европа-16" [level=2] [ref=e46]
+      - paragraph [ref=e47]: "Срез A: 16 стран, 64 региона (4 на страну). Каждая — своя позиция, сильные стороны и риски."
+    - generic [ref=e48]:
+      - generic [ref=e49]:
+        - generic [ref=e50]:
+          - button "Великобритания London · остров Остров на северо-западе среза, отделён Ла-Манш…" [ref=e51] [cursor=pointer]:
+            - generic [ref=e53]: Великобритания
+            - generic [ref=e54]: London · остров
+            - generic [ref=e55]: Остров на северо-западе среза, отделён Ла-Манш…
+          - button "Испания Madrid · берег Пиренейский полуостров, южная оконечность Запа…" [ref=e56] [cursor=pointer]:
+            - generic [ref=e58]: Испания
+            - generic [ref=e59]: Madrid · берег
+            - generic [ref=e60]: Пиренейский полуостров, южная оконечность Запа…
+          - button "Франция Paris · берег Центр Западной Европы, между Британией, Испани…" [ref=e61] [cursor=pointer]:
+            - generic [ref=e63]: Франция
+            - generic [ref=e64]: Paris · берег
+            - generic [ref=e65]: Центр Западной Европы, между Британией, Испани…
+          - button "Германия Berlin · берег Географический центр среза, граничит с Польшей…" [ref=e66] [cursor=pointer]:
+            - generic [ref=e68]: Германия
+            - generic [ref=e69]: Berlin · берег
+            - generic [ref=e70]: Географический центр среза, граничит с Польшей…
+          - button "Италия Rome · берег Апеннинский полуостров, вытянут с севера на юг…" [ref=e71] [cursor=pointer]:
+            - generic [ref=e73]: Италия
+            - generic [ref=e74]: Rome · берег
+            - generic [ref=e75]: Апеннинский полуостров, вытянут с севера на юг…
+          - button "Чехия Prague · landlocked Центр Европы, landlocked в котловине между Гер…" [ref=e76] [cursor=pointer]:
+            - generic [ref=e78]: Чехия
+            - generic [ref=e79]: Prague · landlocked
+            - generic [ref=e80]: Центр Европы, landlocked в котловине между Гер…
+          - button "Австрия Vienna · landlocked Альпийская сердцевина, landlocked между Герман…" [ref=e81] [cursor=pointer]:
+            - generic [ref=e83]: Австрия
+            - generic [ref=e84]: Vienna · landlocked
+            - generic [ref=e85]: Альпийская сердцевина, landlocked между Герман…
+          - button "Польша Warsaw · берег Восточно-центральная равнина, щит между Герман…" [ref=e86] [cursor=pointer]:
+            - generic [ref=e88]: Польша
+            - generic [ref=e89]: Warsaw · берег
+            - generic [ref=e90]: Восточно-центральная равнина, щит между Герман…
+          - button "Швеция Stockholm · берег Скандинавский север, самый северный регион сре…" [ref=e91] [cursor=pointer]:
+            - generic [ref=e93]: Швеция
+            - generic [ref=e94]: Stockholm · берег
+            - generic [ref=e95]: Скандинавский север, самый северный регион сре…
+          - button "Венгрия Budapest · landlocked Паннонская равнина, landlocked в центре Карпат…" [ref=e96] [cursor=pointer]:
+            - generic [ref=e98]: Венгрия
+            - generic [ref=e99]: Budapest · landlocked
+            - generic [ref=e100]: Паннонская равнина, landlocked в центре Карпат…
+          - button "Сербия Belgrade · landlocked Центральные Балканы, landlocked между Венгрией…" [ref=e101] [cursor=pointer]:
+            - generic [ref=e103]: Сербия
+            - generic [ref=e104]: Belgrade · landlocked
+            - generic [ref=e105]: Центральные Балканы, landlocked между Венгрией…
+          - button "Беларусь Minsk · landlocked Восточная равнина между Польшей и Украиной, la…" [ref=e106] [cursor=pointer]:
+            - generic [ref=e108]: Беларусь
+            - generic [ref=e109]: Minsk · landlocked
+            - generic [ref=e110]: Восточная равнина между Польшей и Украиной, la…
+          - button "Румыния Bucharest · берег Юго-восток, дунайский узел между Балканами и У…" [ref=e111] [cursor=pointer]:
+            - generic [ref=e113]: Румыния
+            - generic [ref=e114]: Bucharest · берег
+            - generic [ref=e115]: Юго-восток, дунайский узел между Балканами и У…
+          - button "Греция Athens · берег Южные Балканы, горный полуостров у Эгейского м…" [ref=e116] [cursor=pointer]:
+            - generic [ref=e118]: Греция
+            - generic [ref=e119]: Athens · берег
+            - generic [ref=e120]: Южные Балканы, горный полуостров у Эгейского м…
+          - button "Украина Kyiv · берег Восточный великан среза, самая протяжённая стр…" [ref=e121] [cursor=pointer]:
+            - generic [ref=e123]: Украина
+            - generic [ref=e124]: Kyiv · берег
+            - generic [ref=e125]: Восточный великан среза, самая протяжённая стр…
+          - button "Турция Ankara · берег Трансконтинентальная Анатолия, восточный форпо…" [ref=e126] [cursor=pointer]:
+            - generic [ref=e128]: Турция
+            - generic [ref=e129]: Ankara · берег
+            - generic [ref=e130]: Трансконтинентальная Анатолия, восточный форпо…
+        - generic [ref=e131]:
+          - generic [ref=e132]: Всего 16 · 64 региона · старт 01.01.2026
+          - generic [ref=e133]: Дата выборов своя у каждой страны (месяц/день)
+      - generic [ref=e135]:
+        - generic [ref=e136]: 🗺️
+        - generic [ref=e137]: Выберите страну слева
+        - generic [ref=e138]: Увидите положение на карте, сильные стороны и риски. Все выборы работают — карта интерактивна.
+        - generic [ref=e139]: "Подсказка: кликните карту, чтобы выбрать напрямую, или карточку здесь."
+  - generic [ref=e140]:
+    - generic [ref=e141]:
+      - generic "Карта среза Европа-16" [ref=e143]: Колёсико — зум · перетаскивание — пан · двойной клик — сброс · клик по региону — выбор
+      - generic [ref=e145]:
+        - generic [ref=e146]: "Выбрано:"
+        - generic [ref=e147]: — страна
+        - generic [ref=e148]: ·
+        - generic [ref=e149]: — регион
+        - generic [ref=e150]:
+          - button "Сбросить выбор" [ref=e151] [cursor=pointer]
+          - button "testPing" [ref=e152] [cursor=pointer]
+      - generic [ref=e153]:
+        - generic [ref=e154]:
+          - strong [ref=e155]: Журнал событий
+          - generic [ref=e156]: 1 показать
+        - generic [ref=e158]:
+          - generic [ref=e159]:
+            - generic [ref=e160]: "#1"
+            - generic [ref=e161]: 2026-01-01
+            - generic [ref=e162]: simCreated
+          - generic [ref=e163]: "{\"seed\":42}"
+        - generic [ref=e164]: События приходят напрямую из сима. Приоритеты без спама (полезное решение каждые 1–3 мин — в T7+).
+      - generic [ref=e165]:
+        - strong [ref=e166]: "T3 — что видно на карте:"
+        - text: границы (толще между странами, тоньше между регионами), столица ★, точки войск/приказов (сейчас пусто — T5), война/оккупация (штрих, сейчас нет — T6). Зум/пан плавные, геометрия кешируется, перерисовывается только дифф выбора/режима.map/README.md · PixiJS v7 · без DOM на регион · Graphics cache · diff-only
+    - generic [ref=e167]:
+      - generic [ref=e168]:
+        - generic [ref=e169]:
+          - strong [ref=e170]: Контекст
+          - text: выбор страны
+        - generic [ref=e172]:
+          - generic [ref=e173]: Ничего не выбрано
+          - generic [ref=e174]: Кликните страну или регион на карте. Карта подсвечивает выбор без пересоздания геометрии — только дифф.
+          - generic [ref=e175]: "Подсказка: двойной клик — сброс камеры."
+        - generic [ref=e176]:
+          - text: Стиль — сдержанный политический атлас. Русский язык из
+          - code [ref=e177]: ui/locales/ru.json
+          - text: . Монтирование панелей — по контрактам выше.
+      - generic [ref=e178]:
+        - heading "Экономика — GB" [level=3] [ref=e179]
+        - generic [ref=e180]:
+          - generic [ref=e181]:
+            - strong [ref=e182]: "Казна:"
+            - text: "800.00"
+          - generic [ref=e183]:
+            - strong [ref=e184]: "ВВП (мес.):"
+            - text: 120.00 (не кошелёк)
+          - generic [ref=e185]:
+            - strong [ref=e186]: "Доход:"
+            - text: "30.00"
+          - generic [ref=e187]:
+            - strong [ref=e188]: "Расход:"
+            - text: "62.50"
+            - generic [ref=e189]: (проценты 0.00)
+          - generic [ref=e190]:
+            - strong [ref=e191]: "Баланс:"
+            - text: "-32.50"
+          - generic [ref=e192]:
+            - strong [ref=e193]: "Рост:"
+            - text: 1.00% /мес.
+          - generic [ref=e194]:
+            - strong [ref=e195]: "Поддержка:"
+            - text: "50.0"
+          - generic [ref=e196]: ВВП — не кошелёк; казна меняется только через доход/расход/долг. Потеря промрегиона бьёт по доходу.
+        - generic [ref=e197]:
+          - generic [ref=e198]:
+            - strong [ref=e199]: Налог
+            - generic [ref=e200]: 25%
+          - generic [ref=e201]: Доход сейчас vs рост/поддержка потом
+          - slider [ref=e202]: "0.25"
+        - generic [ref=e203]:
+          - strong [ref=e204]: Веса расходов
+          - generic [ref=e205]: Оборона / Инфра / Соц / Наука (лаг ~6 мес.)
+          - generic [ref=e206]:
+            - generic [ref=e207]: Оборона
+            - slider [ref=e208]: "0.5"
+            - generic [ref=e209]: 50%
+          - generic [ref=e210]:
+            - generic [ref=e211]: Инфраструктура
+            - slider [ref=e212]: "0.5"
+            - generic [ref=e213]: 50%
+          - generic [ref=e214]:
+            - generic [ref=e215]: Соцсфера
+            - slider [ref=e216]: "0.5"
+            - generic [ref=e217]: 50%
+          - generic [ref=e218]:
+            - generic [ref=e219]: Наука
+            - slider [ref=e220]: "0.5"
+            - generic [ref=e221]: 50%
+        - generic [ref=e222]:
+          - strong [ref=e223]: Стройки (3 типа, слоты на регион — 2)
+          - generic [ref=e224]:
+            - combobox [ref=e225]:
+              - option "GB-1" [selected]
+              - option "GB-2"
+              - option "GB-3"
+              - option "GB-4"
+              - option "FR-1 (чужой)"
+              - option "DE-1 (чужой)"
+            - combobox [ref=e226]:
+              - option "Промкомплекс — 300₥, 90дн." [selected]
+              - option "Энергоблок — 220₥, 60дн."
+              - option "Инфраструктура региона — 120₥, 45дн."
+          - generic [ref=e227]:
+            - generic [ref=e228]: "Прогноз до подтверждения:"
+            - generic [ref=e229]: "Стоимость: 300₥, срок: 90 дн., слоты: 0/2 занято"
+            - generic [ref=e230]: Доход 30.00 → 42.00 (+12.00)
+            - generic [ref=e231]: "Выгоды: +12 к месячному доходу после завершения; +15 к месячному ВВП; Сильно повышает доход; потеря такого региона ощутимо бьёт по бюджету (тест потери)"
+            - generic [ref=e232]: "Риски: Высокая цена и длительный срок (90 дн.). Требует свободных слотов."
+            - button "Начать стройку" [ref=e234]
+            - generic [ref=e235]: "Казна после списания: 500.00"
+          - generic [ref=e236]:
+            - generic [ref=e237]: "Активные / завершённые:"
+            - emphasis [ref=e238]: Нет строек
+        - generic [ref=e239]:
+          - strong [ref=e240]: Что изменилось и почему
+          - generic [ref=e241]: Последние эконом-события с причинами
+          - emphasis [ref=e243]: Пока нет изменений
+      - generic [ref=e244]:
+        - heading "Армия — группировки" [level=3] [ref=e245]
+        - paragraph [ref=e246]: "Найм ограничен населением/оснащением/бюджетом/временем (14 дн.). Перемещение только по сухопутному соседству или через морскую переправу (остров UK). Бой: сила = состав × оснащение × готовность, оборона +25% + укрепления × местность (равнина/горы/город) × снабжение (>3 регионов — ×0.7) × случайность ±10% на seeded RNG. Захват = смена контролёра, не владельца (владелец только миром T6)."
+        - generic [ref=e247]:
+          - generic [ref=e248]:
+            - text: Страна
+            - combobox "Страна" [ref=e249]:
+              - option "GB Великобритания" [selected]
+              - option "FR Франция"
+              - option "ES Испания"
+              - option "IT Италия"
+              - option "DE Германия"
+              - option "PL Польша"
+              - option "SE Швеция"
+              - option "RO Румыния"
+              - option "GR Греция"
+              - option "UA Украина"
+              - option "TR Турция"
+              - option "BY Беларусь"
+              - option "CZ Чехия"
+              - option "AT Австрия"
+              - option "HU Венгрия"
+              - option "RS Сербия"
+          - generic [ref=e250]:
+            - text: Регион
+            - combobox "Регион" [ref=e251]:
+              - option "GB-1 plains ★" [selected]
+              - option "GB-2 plains"
+              - option "GB-3 plains"
+              - option "GB-4 plains"
+          - generic [ref=e252]:
+            - text: Состав (500-5000)
+            - textbox "Состав (500-5000)" [ref=e253]:
+              - /placeholder: 500-5000
+              - text: "1000"
+          - generic [ref=e254]:
+            - text: Оснащение (0.5-1.0)
+            - textbox "Оснащение (0.5-1.0)" [ref=e255]:
+              - /placeholder: 0.5-1.0
+              - text: "0.8"
+          - button "Нанять (14 дн.)" [ref=e256]
+        - generic [ref=e257]:
+          - generic [ref=e258]: "GB: казна 800 | нас. 20000 | снар. 20000"
+          - generic [ref=e259]: "FR: казна 800 | нас. 20000 | снар. 20000"
+          - generic [ref=e260]: "ES: казна 800 | нас. 20000 | снар. 20000"
+          - generic [ref=e261]: "IT: казна 800 | нас. 20000 | снар. 20000"
+          - generic [ref=e262]: "DE: казна 800 | нас. 20000 | снар. 20000"
+          - generic [ref=e263]: "PL: казна 800 | нас. 20000 | снар. 20000"
+          - generic [ref=e264]: "SE: казна 800 | нас. 20000 | снар. 20000"
+          - generic [ref=e265]: "RO: казна 800 | нас. 20000 | снар. 20000"
+        - emphasis [ref=e267]: нет отрядов — наймите первый
+        - generic [ref=e268]:
+          - strong [ref=e269]: "Военный слой карты:"
+          - text: показывает контролёр vs владелец (захват = смена контролёра, владелец только миром T6), снабжение дальше 3 регионов — штраф 0.7 (Stage B — полная сеть). Landlocked (CZ/HU/RS/AT/BY) играются честно без моря.
+          - generic [ref=e270]:
+            - generic [ref=e271]: "GB-1: GB/GB plains+укр1 ★"
+            - generic [ref=e272]: "GB-2: GB/GB plains"
+            - generic [ref=e273]: "GB-3: GB/GB plains"
+            - generic [ref=e274]: "GB-4: GB/GB plains"
+            - generic [ref=e275]: "FR-1: FR/FR plains+укр1 ★"
+            - generic [ref=e276]: "FR-2: FR/FR plains"
+            - generic [ref=e277]: "FR-3: FR/FR plains"
+            - generic [ref=e278]: "FR-4: FR/FR plains"
+      - generic [ref=e279]:
+        - heading "Война и мир" [level=3] [ref=e280]
+        - paragraph [ref=e281]: Объявление войны с видимой ценой, 3 опции мира. Юрвладелец меняется только миром (оккупация ≠ аннексия). Агрессия +15 к угрозе. Союзов нет — автовтягивания нет.
+        - generic [ref=e282]:
+          - text: "Угроза (для ИИ T8):"
+          - generic [ref=e283]: GB:0
+          - generic [ref=e284]: FR:0
+          - generic [ref=e285]: ES:0
+          - generic [ref=e286]: IT:0
+          - generic [ref=e287]: DE:0
+          - generic [ref=e288]: PL:0
+          - generic [ref=e289]: SE:0
+          - generic [ref=e290]: RO:0
+        - generic [ref=e291]:
+          - strong [ref=e292]: Объявить войну
+          - generic [ref=e293]:
+            - generic [ref=e294]:
+              - text: Атакующий
+              - combobox "Атакующий" [ref=e295]:
+                - option "GB" [selected]
+                - option "FR"
+                - option "ES"
+                - option "IT"
+                - option "DE"
+                - option "PL"
+                - option "SE"
+                - option "RO"
+                - option "GR"
+                - option "UA"
+                - option "TR"
+                - option "BY"
+                - option "CZ"
+                - option "AT"
+                - option "HU"
+                - option "RS"
+            - generic [ref=e296]:
+              - text: Защитник
+              - combobox "Защитник" [ref=e297]:
+                - option "GB"
+                - option "FR" [selected]
+                - option "ES"
+                - option "IT"
+                - option "DE"
+                - option "PL"
+                - option "SE"
+                - option "RO"
+                - option "GR"
+                - option "UA"
+                - option "TR"
+                - option "BY"
+                - option "CZ"
+                - option "AT"
+                - option "HU"
+                - option "RS"
+            - button "Объявить войну" [ref=e298]
+          - generic [ref=e299]:
+            - generic [ref=e300]:
+              - strong [ref=e301]: "Прогноз до подтверждения:"
+              - text: доступно
+            - generic [ref=e302]: "Цена: казна 150₥, угроза +15"
+            - generic [ref=e303]: "Последствия: угроза GB +15 (воспринимаемая угроза для ИИ); истощение начнёт расти +0.6/день, +5 за регион; юрвладелец меняется только миром (оккупация ≠ аннексия); союзов нет (A) — автовтягивания в чужие наступательные войны нет"
+            - generic [ref=e304]: "война GB → FR: цена казна 150, угроза +15. угроза GB +15 (воспринимаемая угроза для ИИ); истощение начнёт расти +0.6/день, +5 за регион; юрвладелец меняется только миром (оккупация ≠ аннексия); союзов нет (A) — автовтягивания в чужие наступательные войны нет"
+        - generic [ref=e305]:
+          - strong [ref=e306]: Активные войны (0)
+          - generic [ref=e307]: нет активных войн
+        - generic [ref=e308]:
+          - strong [ref=e309]: Предложить мир
+          - generic [ref=e310]:
+            - generic [ref=e311]:
+              - text: warId
+              - textbox "warId" [ref=e312]:
+                - /placeholder: war-1
+            - generic [ref=e313]:
+              - text: Предлагает
+              - combobox "Предлагает" [ref=e314]:
+                - option "GB" [selected]
+                - option "FR"
+                - option "ES"
+                - option "IT"
+                - option "DE"
+                - option "PL"
+                - option "SE"
+                - option "RO"
+                - option "GR"
+                - option "UA"
+                - option "TR"
+                - option "BY"
+                - option "CZ"
+                - option "AT"
+                - option "HU"
+                - option "RS"
+            - generic [ref=e315]:
+              - text: Тип
+              - combobox "Тип" [ref=e316]:
+                - option "белый мир" [selected]
+                - option "аннексия оккупированного"
+                - option "контрибуция (250₥)"
+            - button "Предложить мир" [ref=e317]
+          - generic [ref=e318]: Выберите войну и сторону для прогноза ИИ
+          - generic [ref=e319]: Белый — статус-кво. Аннексия — контролёр→владелец для оккупированного (только миром). Контрибуция — перевод казны 250₥ через экономику.
+        - generic [ref=e320]:
+          - strong [ref=e321]: "Обязательства (A):"
+          - text: союзов нет — автовтягивания в чужие наступательные войны нет. Каждая война двусторонняя. Заготовка под B.
+      - generic [ref=e322]:
+        - heading "Сохранения" [level=3] [ref=e323]
+        - paragraph [ref=e324]: "JSON v1: version/seed/дата/страны/регионы/армии/выборы/хвост лога (100). Валидация при загрузке — битый/несовместимый сейв = понятная ошибка без краша. Локальные слоты + экспорт/импорт файла."
+        - generic [ref=e325]:
+          - text: "Текущий:"
+          - strong [ref=e326]: 2026-01-01
+          - text: · seed 42 · дней 0 · тиков 0 · слоты wb-save-slot-1, wb-save-slot-2, wb-save-slot-3
+        - generic [ref=e327]:
+          - generic [ref=e328]:
+            - generic [ref=e329]: Слот 1
+            - generic [ref=e330]: — пусто —
+            - button "Сохранить" [ref=e331]
+            - button "Загрузить" [ref=e332]
+          - generic [ref=e333]:
+            - generic [ref=e334]: Слот 2
+            - generic [ref=e335]: — пусто —
+            - button "Сохранить" [ref=e336]
+            - button "Загрузить" [ref=e337]
+          - generic [ref=e338]:
+            - generic [ref=e339]: Слот 3
+            - generic [ref=e340]: — пусто —
+            - button "Сохранить" [ref=e341]
+            - button "Загрузить" [ref=e342]
+        - generic [ref=e343]:
+          - button "Экспорт файла" [ref=e344]
+          - generic [ref=e345]:
+            - text: Импорт файла
+            - button "Импорт файла" [ref=e346]
+        - generic [ref=e347]: "Проверка: битый JSON или несовместимая версия (≠1) даёт понятную ошибку без краша. Состояние сохраняется полностью — повторная загрузка детерминирована."
+      - generic [ref=e348]:
+        - strong [ref=e349]: "Сценарий:"
+        - text: "europe-16-A v1.0.0 · Срез Европа-16 ANatural Earth 5.1.0 · 60–120 регионов · факт: As in Natural Earth Admin-0 1:50m v5.1.0 (public domain): Crimea shown as part o…Календарь с 2026-01-01 · выборы каждые 5 лет · seed 42T1 ядро времени · T2 сценарий · T3 карта — все в одном бранче feat/spec-1-slice-A"
+  - generic [ref=e350]:
+    - text: Стиль — сдержанный политический атлас · Русский язык · Тексты в
+    - code [ref=e351]: ui/locales/ru.json
+    - text: · Нет кнопок-заглушек — всё кликабельное работает или явно отключено с объяснением.
