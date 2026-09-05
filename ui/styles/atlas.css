@@ -1,0 +1,29 @@
+/* restrained political atlas — T3 */
+:root {
+  --atlas-paper: #fcfcf9;
+  --atlas-paper-dark: #f4f1e8;
+  --atlas-ink: #111827;
+  --atlas-ink-muted: #6b7280;
+  --atlas-border: #d1d5db;
+  --atlas-sea: #eef2f6;
+  --atlas-accent: #111827;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--atlas-paper);
+  color: var(--atlas-ink);
+  font-family: ui-sans-system, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* scrollbars */
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 999px; }
+*::-webkit-scrollbar-track { background: transparent; }
