@@ -8,6 +8,8 @@ import { saveGame, loadGame } from "../sim/save.js";
 
 export type MapMode = "political" | "military";
 
+export type GameSection = "overview" | "economy" | "army" | "politics" | "diplomacy";
+
 interface GameStore {
   sim: SimEngine;
   scenario: Scenario;
@@ -15,6 +17,8 @@ interface GameStore {
   isPaused: boolean;
   accumulator: TimeAccumulator;
   lastDate: string;
+  /** Incremented on every tick batch and every dispatch — guarantees UI refresh even when date is unchanged (e.g. command on pause). */
+  stateRev: number;
   // map / selection (T3)
   mapMode: MapMode;
   selectedCountryId: string | null;
@@ -22,6 +26,11 @@ interface GameStore {
   playerCountryId: string | null;
   hasStarted: boolean;
   aiProfiles: Record<string, string>; // overrides
+  // grand-strategy shell UI
+  activeSection: GameSection;
+  showEventLog: boolean;
+  showMenu: boolean;
+  isDevMode: boolean;
   // T4 compat alias — keeps EconomyPanel contract while preserving T3 nullable model
   setSelectedCountry: (id: string) => void;
   // actions
@@ -38,6 +47,12 @@ interface GameStore {
   setAiProfile: (countryId: string, profile: string) => void;
   loadSim: (newSim: SimEngine) => void;
   runAIForDay: (daysElapsed: number, reason?: string) => void;
+  setActiveSection: (s: GameSection) => void;
+  toggleEventLog: () => void;
+  setEventLogOpen: (open: boolean) => void;
+  toggleMenu: () => void;
+  setMenuOpen: (open: boolean) => void;
+  toggleDevMode: () => void;
 }
 
 let _prevSpeed: Speed = DEFAULT_SPEED;
@@ -71,6 +86,11 @@ export const useGameStore = create<GameStore>((set, get) => {
     playerCountryId: null,
     hasStarted: false,
     aiProfiles: {},
+    stateRev: 0,
+    activeSection: "overview",
+    showEventLog: true,
+    showMenu: false,
+    isDevMode: false,
 
     setSpeed: (s) => {
       const st = get();
@@ -98,6 +118,8 @@ export const useGameStore = create<GameStore>((set, get) => {
     },
     tickReal: (deltaSeconds) => {
       const st = get();
+      // Time does not flow before the game has started (country picked + explicit start).
+      if (!st.hasStarted) return;
       const days = st.accumulator.advance(deltaSeconds);
       if (days > 0) {
         const beforeTailLen = st.sim.getEventLog().length;
@@ -123,7 +145,7 @@ export const useGameStore = create<GameStore>((set, get) => {
             } catch {/* ignore AI errors */}
           }
         }
-        set({ lastDate: st.sim.getDate() });
+        set({ lastDate: st.sim.getDate(), stateRev: st.stateRev + 1 });
       }
     },
     dispatch: (cmd) => {
@@ -141,7 +163,7 @@ export const useGameStore = create<GameStore>((set, get) => {
           }
         }
       }
-      set({ lastDate: st.sim.getDate() });
+      set({ lastDate: st.sim.getDate(), stateRev: st.stateRev + 1 });
       return res;
     },
     runAIForDay: (daysElapsed, reason) => {
@@ -153,7 +175,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         const profileOverride = st.aiProfiles[cid] as import("../sim/ai.js").AiProfileId | undefined;
         try { runAIStep(st.sim, cid, { reason: r, profileOverride }); st.sim.setAiLastRun(cid, daysElapsed); } catch {}
       }
-      set({ lastDate: st.sim.getDate() });
+      set({ lastDate: st.sim.getDate(), stateRev: st.stateRev + 1 });
     },
     setMapMode: (m) => set({ mapMode: m }),
     selectCountry: (id) => {
@@ -182,7 +204,13 @@ export const useGameStore = create<GameStore>((set, get) => {
       }
       const reg = st.scenario.regions.find((r) => r.regionId === id);
       if (!reg) return;
-      set({ selectedRegionId: id, selectedCountryId: reg.countryId });
+      // Prefer live owner from sim (occupation/annexation may differ from scenario initial owner).
+      let owner: string = reg.countryId;
+      try {
+        const rs = st.sim.getRegionState(id);
+        if (rs?.ownerId) owner = rs.ownerId;
+      } catch { /* scenario fallback */ }
+      set({ selectedRegionId: id, selectedCountryId: owner });
     },
     setPlayerCountry: (id) => {
       if (id === null) {
@@ -200,11 +228,17 @@ export const useGameStore = create<GameStore>((set, get) => {
       const st = get();
       if (!st.scenario.countries.some((c) => c.countryId === countryId)) return;
       st.sim.setPlayerCountryId(countryId);
+      // Fresh start: reset accumulated fractional time so the date doesn't jump on start.
+      try { st.accumulator.setSpeed(st.isPaused ? "paused" : st.speed); } catch { /* noop */ }
       set({
         playerCountryId: countryId,
         selectedCountryId: countryId,
         selectedRegionId: null,
         hasStarted: true,
+        activeSection: "overview",
+        showMenu: false,
+        lastDate: st.sim.getDate(),
+        stateRev: st.stateRev + 1,
       });
     },
     resetSelection: () => set({ selectedCountryId: null, selectedRegionId: null }),
@@ -212,15 +246,21 @@ export const useGameStore = create<GameStore>((set, get) => {
       const st = get();
       if (!["cautious","ambitious"].includes(profile)) return;
       st.sim.setAiProfile(countryId, profile);
-      set({ aiProfiles: { ...st.aiProfiles, [countryId]: profile } });
+      set({ aiProfiles: { ...st.aiProfiles, [countryId]: profile }, stateRev: st.stateRev + 1 });
     },
     loadSim: (newSim) => {
-      const st = get();
       // preserve player linkage? newSim already has playerCountryId from save, or we keep current
       // ensure aiProfiles map sync
       const profiles = newSim.getAllAiProfiles();
-      set({ sim: newSim, lastDate: newSim.getDate(), playerCountryId: newSim.getPlayerCountryId(), aiProfiles: profiles, hasStarted: !!newSim.getPlayerCountryId() });
+      const player = newSim.getPlayerCountryId();
+      set({ sim: newSim, lastDate: newSim.getDate(), playerCountryId: player, aiProfiles: profiles, hasStarted: !!player, selectedCountryId: player, selectedRegionId: null, stateRev: get().stateRev + 1 });
     },
+    setActiveSection: (s) => set({ activeSection: s }),
+    toggleEventLog: () => set((st) => ({ showEventLog: !st.showEventLog })),
+    setEventLogOpen: (open) => set({ showEventLog: open }),
+    toggleMenu: () => set((st) => ({ showMenu: !st.showMenu })),
+    setMenuOpen: (open) => set({ showMenu: open }),
+    toggleDevMode: () => set((st) => ({ isDevMode: !st.isDevMode })),
     // T4 compat alias — delegate to selectCountry to avoid duplication (fix #2 Middle Man)
     setSelectedCountry: (id) => get().selectCountry(id),
   };
