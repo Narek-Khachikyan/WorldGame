@@ -1,0 +1,597 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "ADMIN": "United Kingdom",
+        "ADMIN_RU": "Великобритания",
+        "ISO_A2": "GB",
+        "ISO_A3": "GBR",
+        "COUNTRY_ID": "GB"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -8,
+              50
+            ],
+            [
+              -3,
+              50
+            ],
+            [
+              -3,
+              55
+            ],
+            [
+              -8,
+              55
+            ],
+            [
+              -8,
+              50
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "ADMIN": "France",
+        "ADMIN_RU": "Франция",
+        "ISO_A2": "FR",
+        "ISO_A3": "FRA",
+        "COUNTRY_ID": "FR"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              1,
+              43
+            ],
+            [
+              6,
+              43
+            ],
+            [
+              6,
+              48
+            ],
+            [
+              1,
+              48
+            ],
+            [
+              1,
+              43
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "ADMIN": "Spain",
+        "ADMIN_RU": "Испания",
+        "ISO_A2": "ES",
+        "ISO_A3": "ESP",
+        "COUNTRY_ID": "ES"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -5,
+              37
+            ],
+            [
+              0,
+              37
+            ],
+            [
+              0,
+              42
+            ],
+            [
+              -5,
+              42
+            ],
+            [
+              -5,
+              37
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "ADMIN": "Italy",
+        "ADMIN_RU": "Италия",
+        "ISO_A2": "IT",
+        "ISO_A3": "ITA",
+        "COUNTRY_ID": "IT"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              8,
+              37
+            ],
+            [
+              13,
+              37
+            ],
+            [
+              13,
+              46
+            ],
+            [
+              8,
+              46
+            ],
+            [
+              8,
+              37
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "ADMIN": "Germany",
+        "ADMIN_RU": "Германия",
+        "ISO_A2": "DE",
+        "ISO_A3": "DEU",
+        "COUNTRY_ID": "DE"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              7,
+              50
+            ],
+            [
+              12,
+              50
+            ],
+            [
+              12,
+              55
+            ],
+            [
+              7,
+              55
+            ],
+            [
+              7,
+              50
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "ADMIN": "Poland",
+        "ADMIN_RU": "Польша",
+        "ISO_A2": "PL",
+        "ISO_A3": "POL",
+        "COUNTRY_ID": "PL"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              14,
+              51
+            ],
+            [
+              19,
+              51
+            ],
+            [
+              19,
+              56
+            ],
+            [
+              14,
+              56
+            ],
+            [
+              14,
+              51
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "ADMIN": "Sweden",
+        "ADMIN_RU": "Швеция",
+        "ISO_A2": "SE",
+        "ISO_A3": "SWE",
+        "COUNTRY_ID": "SE"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              14,
+              60
+            ],
+            [
+              19,
+              60
+            ],
+            [
+              19,
+              65
+            ],
+            [
+              14,
+              65
+            ],
+            [
+              14,
+              60
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "ADMIN": "Romania",
+        "ADMIN_RU": "Румыния",
+        "ISO_A2": "RO",
+        "ISO_A3": "ROU",
+        "COUNTRY_ID": "RO"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              22,
+              44
+            ],
+            [
+              27,
+              44
+            ],
+            [
+              27,
+              49
+            ],
+            [
+              22,
+              49
+            ],
+            [
+              22,
+              44
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "ADMIN": "Greece",
+        "ADMIN_RU": "Греция",
+        "ISO_A2": "GR",
+        "ISO_A3": "GRC",
+        "COUNTRY_ID": "GR"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              22,
+              36
+            ],
+            [
+              27,
+              36
+            ],
+            [
+              27,
+              41
+            ],
+            [
+              22,
+              41
+            ],
+            [
+              22,
+              36
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "ADMIN": "Ukraine",
+        "ADMIN_RU": "Украина",
+        "ISO_A2": "UA",
+        "ISO_A3": "UKR",
+        "COUNTRY_ID": "UA"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              24,
+              49
+            ],
+            [
+              30,
+              49
+            ],
+            [
+              30,
+              54
+            ],
+            [
+              24,
+              54
+            ],
+            [
+              24,
+              49
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "ADMIN": "Turkey",
+        "ADMIN_RU": "Турция",
+        "ISO_A2": "TR",
+        "ISO_A3": "TUR",
+        "COUNTRY_ID": "TR"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              28,
+              36
+            ],
+            [
+              34,
+              36
+            ],
+            [
+              34,
+              41
+            ],
+            [
+              28,
+              41
+            ],
+            [
+              28,
+              36
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "ADMIN": "Belarus",
+        "ADMIN_RU": "Беларусь",
+        "ISO_A2": "BY",
+        "ISO_A3": "BLR",
+        "COUNTRY_ID": "BY"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              20,
+              54
+            ],
+            [
+              25,
+              54
+            ],
+            [
+              25,
+              58
+            ],
+            [
+              20,
+              58
+            ],
+            [
+              20,
+              54
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "ADMIN": "Czechia",
+        "ADMIN_RU": "Чехия",
+        "ISO_A2": "CZ",
+        "ISO_A3": "CZE",
+        "COUNTRY_ID": "CZ"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              12,
+              51
+            ],
+            [
+              14,
+              51
+            ],
+            [
+              14,
+              54
+            ],
+            [
+              12,
+              54
+            ],
+            [
+              12,
+              51
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "ADMIN": "Austria",
+        "ADMIN_RU": "Австрия",
+        "ISO_A2": "AT",
+        "ISO_A3": "AUT",
+        "COUNTRY_ID": "AT"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              13,
+              45
+            ],
+            [
+              16,
+              45
+            ],
+            [
+              16,
+              49
+            ],
+            [
+              13,
+              49
+            ],
+            [
+              13,
+              45
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "ADMIN": "Hungary",
+        "ADMIN_RU": "Венгрия",
+        "ISO_A2": "HU",
+        "ISO_A3": "HUN",
+        "COUNTRY_ID": "HU"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              16,
+              46
+            ],
+            [
+              20,
+              46
+            ],
+            [
+              20,
+              50
+            ],
+            [
+              16,
+              50
+            ],
+            [
+              16,
+              46
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "ADMIN": "Serbia",
+        "ADMIN_RU": "Сербия",
+        "ISO_A2": "RS",
+        "ISO_A3": "SRB",
+        "COUNTRY_ID": "RS"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              18,
+              42
+            ],
+            [
+              22,
+              42
+            ],
+            [
+              22,
+              46
+            ],
+            [
+              18,
+              46
+            ],
+            [
+              18,
+              42
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}

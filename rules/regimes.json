@@ -1,0 +1,41 @@
+{
+  "_note": "Model coefficients, not factual statistics. Values are game balances in rules/, separated from scenario facts in data/.",
+  "regimes": {
+    "liberalDemocracy": {
+      "stabilityBase": 0.8,
+      "supportBase": 0.7,
+      "retainBonus": 0,
+      "taxEfficiency": 1,
+      "warFatigueFactor": 1.2,
+      "electionCompetitiveness": 0.9,
+      "foreignTrustBonus": 2
+    },
+    "electoralDemocracy": {
+      "stabilityBase": 0.6,
+      "supportBase": 0.6,
+      "retainBonus": 0.15,
+      "taxEfficiency": 0.95,
+      "warFatigueFactor": 1,
+      "electionCompetitiveness": 0.7,
+      "foreignTrustBonus": 0
+    },
+    "authoritarian": {
+      "stabilityBase": 0.5,
+      "supportBase": 0.5,
+      "retainBonus": 0.35,
+      "taxEfficiency": 0.85,
+      "warFatigueFactor": 0.8,
+      "electionCompetitiveness": 0.3,
+      "foreignTrustBonus": -2
+    },
+    "oneParty": {
+      "stabilityBase": 0.4,
+      "supportBase": 0.4,
+      "retainBonus": 0.5,
+      "taxEfficiency": 0.8,
+      "warFatigueFactor": 0.6,
+      "electionCompetitiveness": 0.15,
+      "foreignTrustBonus": -4
+    }
+  }
+}

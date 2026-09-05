@@ -1,0 +1,40 @@
+{
+  "scenarioId": "europe-16-A",
+  "name": "Europe-16 Slice A",
+  "nameRu": "Срез Европа-16 A",
+  "version": "1.0.0",
+  "description": "Vertical slice A: 16 active countries, 64 generated strategic regions (4 per country, 60-120 range), procedural game division inside Natural Earth Admin-0 1:50m simplified rectangles. Disputed territories (Crimea, Kosovo, etc.) shown as in Natural Earth 5.1.0 – Crimea as part of Ukraine, Kosovo as Serbia per NE Admin-0. Game abstraction: simplified rectangles clipped inside NE polygons, marked generated:true, no overlaps, adjacency by shared border, sea crossings separate. Capitals, election dates, leaders and parties are factual with sources; numeric balances are model coefficients in rules/.",
+  "descriptionRu": "Вертикальный срез A: 16 активных стран, 64 сгенерированных стратегических региона (по 4 на страну, диапазон 60-120), процедурное деление внутри упрощённых прямоугольников Natural Earth Admin-0 1:50m. Спорные территории (Крым, Косово и др.) — как в Natural Earth 5.1.0 (Крым — в составе Украины, Косово — в составе Сербии по NE Admin-0). Геометрия — игровая абстракция, упрощённые прямоугольники внутри границ NE, помечены generated:true, без перекрытий, соседство по общей границе, морские переправы отдельно. Столицы, даты выборов, лидеры и партии — факты с источниками; числовые балансы — модельные коэффициенты в rules/.",
+  "disputedTerritoriesNote": "As in Natural Earth Admin-0 1:50m v5.1.0 (public domain): Crimea shown as part of Ukraine (admin level 0), Kosovo as part of Serbia. Donbas, Transnistria, Northern Cyprus not separately represented at this scale. Scenario follows NE as-is, with note in description; game does not take political stance beyond NE source.",
+  "disputedTerritoriesNoteRu": "Как в Natural Earth Admin-0 1:50m v5.1.0 (public domain): Крым — часть Украины, Косово — часть Сербии по Admin-0. Сценарий следует NE как есть.",
+  "startDate": "2026-01-01",
+  "electionIntervalYears": 5,
+  "totalCountries": 16,
+  "totalRegions": 64,
+  "generated": true,
+  "sources": [
+    {
+      "name": "Natural Earth Admin-0 1:50m",
+      "version": "5.1.0",
+      "url": "https://www.naturalearthdata.com/downloads/50m-cultural-vectors/50m-admin-0-countries/",
+      "license": "Public Domain",
+      "localPath": "data/ne_50m_admin_0_countries.geojson",
+      "note": "Simplified rectangles derived from NE bboxes, game abstraction, see data/README.md"
+    }
+  ],
+  "files": [
+    "countries.json",
+    "regions.json",
+    "leaders.json",
+    "parties.json",
+    "regimes.json",
+    "crossings.json",
+    "ne_50m_admin_0_countries.geojson"
+  ],
+  "attributionPath": "data/attribution.md",
+  "calendar": {
+    "start": "2026-01-01",
+    "electionIntervalYears": 5,
+    "nextElectionFromStart": true
+  }
+}
