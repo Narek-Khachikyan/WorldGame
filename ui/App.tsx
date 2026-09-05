@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useGameStore } from "./store.js";
+import ArmyPanel from "./ArmyPanel.js";
 import ru from "./locales/ru.json";
 
 export default function App() {
@@ -121,10 +122,19 @@ export default function App() {
         </div>
       </div>
 
+      <div style={{ marginTop: 16 }}>
+        <ArmyPanel />
+      </div>
+
       <div style={{ marginTop: 16, fontSize: 13, opacity: 0.75 }}>
-        <strong>Что работает в T1:</strong> календарь (день=базовый шаг), пауза+3 скорости через аккумулятор (частота кадров не
-        влияет), seeded RNG (mulberry32), валидатор команд и журнал событий, структура <code>sim/</code> / <code>data/</code> /{" "}
-        <code>rules/</code> / <code>map/</code> / <code>ui/</code>. Сценарий, карта, экономика и пр. — в следующих тикетах.
+        <strong>Что работает в T1+T2+T5:</strong> календарь, пауза×3, seeded RNG, валидатор, журнал, сценарий Европа-16 (64 региона, границы, столица, соседство по границе, переправы), армия — найм с лимитами и временем, перемещение по соседству/переправам, бой по формуле с RNG, захват = контролёр≠владелец, снабжение &gt;3 регионов ×0.7, содержание через оборонный вес (хук T4), военный слой для карты #4.
+        <div style={{ marginTop: 6, fontSize: 12, border: "1px solid #eee", padding: 8, borderRadius: 6, background: "#fafafa" }}>
+          <strong>Контракт T5:</strong> <code>regionState.ownerId</code> — юр. владелец, меняется только миром (T6); <code>controllerId</code> — фактический контролёр, меняется захватом. Мир предложит white/annexOccupied/indemnity в T6. Снабжение — базовый штраф, полная сеть — Stage B.
+          <br />
+          <strong>Хук содержания:</strong> <code>dailyUpkeepCost(unit)</code> в <code>sim/army.ts</code> — T4 будет списывать через вес обороны; в T5 списывается напрямую из казны в <code>tick()</code>.
+          <br />
+          <strong>Команды:</strong> <code>recruitUnit {'{'}countryId, regionId, personnel?, equipment?, readiness?, unitId?{'}'}</code>, <code>moveUnit {'{'}unitId, toRegionId{'}'}</code>, <code>setStance {'{'}unitId, stance{'}'}</code> — валидатор отклоняет с причиной (море без переправы → сообщение с «переправа», UK-кейс).
+        </div>
       </div>
     </div>
   );

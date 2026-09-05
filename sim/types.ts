@@ -25,12 +25,43 @@ export interface SimEvent {
   message?: string;
 }
 
+export interface RegionControllerState {
+  regionId: string;
+  ownerId: string;
+  controllerId: string;
+  terrain: string;
+  fortLevel: number;
+  isCapitalRegion: boolean;
+}
+
+export interface CountryEconomyState {
+  treasury: number;
+  population: number;
+  equipmentStock: number;
+}
+
+export interface ArmyUnitSnapshot {
+  unitId: string;
+  countryId: string;
+  regionId: string;
+  personnel: number;
+  equipment: number;
+  readiness: number;
+  stance: string;
+  daysUntilReady: number;
+  hiringTimeDays: number;
+}
+
 export interface SimSnapshot {
   date: GameDateString;
   daysElapsed: number;
   seed: number;
   tickCount: number;
   customState: Record<string, number>;
+  // T5 army — exposed for map UI military layer (#4) and tests; owner vs controller contract: owner only changed by peace (T6)
+  units?: ArmyUnitSnapshot[];
+  regions?: RegionControllerState[];
+  countryEconomy?: Record<string, CountryEconomyState>;
 }
 
 export type Speed = "slow" | "normal" | "fast" | "paused";

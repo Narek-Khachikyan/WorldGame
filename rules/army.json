@@ -1,0 +1,61 @@
+{
+  "_note": "Model coefficients for army A (WB-A T5). Not factual statistics — game balance. Separated from scenario facts in data/. Stage B will add full supply network.",
+  "hiring": {
+    "costPerPersonnel": 2,
+    "costPerEquipment": 3,
+    "timeDays": 14,
+    "defaultPersonnel": 1000,
+    "defaultEquipment": 0.8,
+    "defaultReadiness": 0.85,
+    "minPersonnel": 500,
+    "maxPersonnel": 5000,
+    "equipmentMin": 0.5,
+    "equipmentMax": 1.0,
+    "readinessMin": 0.5,
+    "readinessMax": 1.0,
+    "populationPerPersonnel": 1,
+    "equipmentStockPerEquipmentUnit": 800
+  },
+  "upkeep": {
+    "costPerPersonnelPerDay": 0.01,
+    "costPerEquipmentPerDay": 0.15,
+    "note": "Hook for T4 economy: T4 will deduct via defense weight. For standalone T5, SimEngine deducts from treasury directly on tick(). Expose dailyUpkeepCost(unit) for T4."
+  },
+  "combat": {
+    "defenseBonus": 1.25,
+    "fortificationBonusPerLevel": 0.15,
+    "terrainMultipliers": {
+      "plains": 1.0,
+      "mountains": 1.4,
+      "city": 1.5
+    },
+    "randomSpread": 0.1,
+    "supplyDetachmentThresholdN": 3,
+    "supplyPenaltyFactor": 0.7,
+    "winnerCasualtyRate": 0.08,
+    "loserCasualtyRate": 0.28
+  },
+  "movement": {
+    "supplyDistanceN": 3,
+    "supplyPenaltyFactor": 0.7
+  },
+  "initialCountry": {
+    "treasury": 20000,
+    "population": 20000,
+    "equipmentStock": 20000
+  },
+  "messages": {
+    "seaRejection": "морской переход без переправы запрещён — требуется переправа: нет сухопутного соседства и нет морской переправы между регионами",
+    "noAdjacency": "нет сухопутного соседства и нет морской переправы между регионами",
+    "unknownRegion": "неизвестный регион",
+    "unknownUnit": "неизвестный отряд",
+    "unitNotReady": "отряд ещё формируется",
+    "insufficientTreasury": "недостаточно средств в казне",
+    "insufficientPopulation": "недостаточно населения для найма",
+    "insufficientEquipment": "недостаточно снаряжения",
+    "invalidPersonnel": "численность должна быть 500–5000",
+    "invalidEquipment": "оснащение должно быть 0.5–1.0",
+    "sameRegion": "отряд уже в этом регионе",
+    "regionNotOwned": "найм возможен только в своих регионах"
+  }
+}
