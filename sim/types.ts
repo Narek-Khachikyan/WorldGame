@@ -52,6 +52,23 @@ export interface ArmyUnitSnapshot {
   hiringTimeDays: number;
 }
 
+export interface WarSnapshot {
+  warId: string;
+  attackerId: string;
+  defenderId: string;
+  startDay: number;
+  startDate: string;
+  status: "active" | "ended";
+  endDay?: number;
+  endDate?: string;
+  endReason?: string;
+  exhaustionAttacker: number;
+  exhaustionDefender: number;
+  daysAtWar: number;
+  occupiedByAttacker: string[];
+  occupiedByDefender: string[];
+}
+
 export interface SimSnapshot {
   date: GameDateString;
   daysElapsed: number;
@@ -65,6 +82,9 @@ export interface SimSnapshot {
   units?: ArmyUnitSnapshot[];
   regions?: RegionControllerState[];
   countryEconomy?: Record<string, CountryEconomyState>;
+  // T6 war
+  wars?: WarSnapshot[];
+  threats?: Record<string, number>;
 }
 
 export type Speed = "slow" | "normal" | "fast" | "paused";

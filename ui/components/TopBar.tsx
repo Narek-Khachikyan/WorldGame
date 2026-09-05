@@ -2,19 +2,21 @@ import { useGameStore } from "../store.js";
 import ru from "../locales/ru.json";
 
 export default function TopBar() {
-  const { sim, wars, constructions, treasury, balance } = (() => {
-    // inline stub reading
-    const s = useGameStore.getState();
-    return {
-      sim: s.sim,
-      wars: [] as Array<{ id: string }>,
-      constructions: [] as Array<{ id: string }>,
-      treasury: null as number | null,
-      balance: null as number | null,
-    };
-  })();
-  // reactive date/speed
+  const sim = useGameStore((s) => s.sim);
   const lastDate = useGameStore((s) => s.lastDate);
+  // T6 wars: derive from sim snapshot; re-renders on lastDate change (tick/dispatch bumps it)
+  const activeWars = sim.getWarsSnapshot().filter((w) => w.status === "active");
+  const wars = activeWars.map((w) => ({ id: w.warId }));
+  // constructions placeholder: count active projects across economies
+  const snap = sim.getSnapshot();
+  const constructions = snap.projects?.filter((p) => p.status === "active") ?? [];
+  // treasury/balance placeholder — show player country if available, else GB
+  const playerCountryId = useGameStore((s) => s.playerCountryId);
+  const selectedCountryId = useGameStore((s) => s.selectedCountryId);
+  const ecoCountry = playerCountryId ?? selectedCountryId ?? "GB";
+  const eco = snap.economies?.[ecoCountry];
+  const treasury = eco?.treasury ?? null;
+  const balance = eco ? eco.lastIncome - eco.lastExpense : null;
   const speed = useGameStore((s) => s.speed);
   const isPaused = useGameStore((s) => s.isPaused);
   const setSpeed = useGameStore((s) => s.setSpeed);

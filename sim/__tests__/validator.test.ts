@@ -17,7 +17,7 @@ describe("command validator skeleton", () => {
   });
 
   it("rejects unknown type with reason", () => {
-    const r = validateCommand({ type: "declareWar" });
+    const r = validateCommand({ type: "ghostCommandXYZ" });
     expect(r.ok).toBe(false);
     expect(r.reason).toMatch(/unknown command type/);
   });

@@ -2,7 +2,7 @@ import { GameCalendar, START_DATE, addDays } from "./calendar.js";
 import { SeededRng } from "./rng.js";
 import { EventLog } from "./eventLog.js";
 import { validateCommand } from "./validator.js";
-import type { Command, SimSnapshot, ValidationResult, RegionControllerState, CountryEconomyState } from "./types.js";
+import type { Command, SimSnapshot, ValidationResult, RegionControllerState, CountryEconomyState, WarSnapshot } from "./types.js";
 import { loadScenario } from "./scenario.js";
 import type { Scenario } from "./scenario.js";
 import {
@@ -44,6 +44,18 @@ import {
 import armyRulesRaw from "../rules/army.json";
 import countriesRaw from "../data/countries.json";
 import regionsRaw from "../data/regions.json";
+import {
+  type War,
+  type PeaceType,
+  WAR_RULES,
+  forecastDeclareWar as forecastDeclareWarPure,
+  getOccupiedForWar,
+  computeForceRatio,
+  totalStrength,
+  computeExhaustion,
+  evaluatePeaceAI,
+  getWarDays,
+} from "./war.js";
 
 export const SIM_START_DATE = START_DATE;
 export const DEFAULT_SEED = 42;
@@ -53,7 +65,7 @@ const ARMY_RULES = armyRulesRaw as typeof import("../rules/army.json");
 /**
  * Pure sim core — no React/PixiJS.
  * Public seam: commands + tick(days) + queries + eventLog.
- * Union of T4 economy + T5 army.
+ * Union of T4 economy + T5 army + T6 war.
  */
 export class SimEngine {
   readonly seed: number;
@@ -76,6 +88,11 @@ export class SimEngine {
   private nextUnitSeq = 1;
   private capitalRegionByCountry: Map<string, string> = new Map();
 
+  // T6 war
+  private wars: Map<string, War> = new Map();
+  private nextWarId = 1;
+  private threat: Map<string, number> = new Map();
+
   constructor(config?: { seed?: number; startDate?: string }) {
     const seed = config?.seed ?? DEFAULT_SEED;
     this.seed = seed >>> 0;
@@ -86,6 +103,17 @@ export class SimEngine {
     this.initArmyState();
     this.log.append(this.calendar.getDateString(), "simCreated", { seed: this.seed });
     this.initEconomy();
+    this.initWarState();
+  }
+
+  private initWarState(): void {
+    for (const c of this.scenario.countries) {
+      if (!this.threat.has(c.countryId)) this.threat.set(c.countryId, 0);
+    }
+    // also ensure threat for any economy country
+    for (const cid of this.getCountryIds()) {
+      if (!this.threat.has(cid)) this.threat.set(cid, 0);
+    }
   }
 
   private initEconomy(): void {
@@ -175,7 +203,7 @@ export class SimEngine {
     return this.tickCount;
   }
 
-  /** Snapshot for tests / UI. Returns shallow copy. Union of T4 and T5. */
+  /** Snapshot for tests / UI. Returns shallow copy. Union of T4 and T5 + T6 war. */
   getSnapshot(): SimSnapshot {
     const economies: Record<string, { treasury: number; debt: number; gdp: number; taxRate: number; weights: Record<string, number>; lastIncome: number; lastExpense: number; lastInterest: number; lastGrowthRate: number; lastSupport: number }> = {};
     for (const [cid, eco] of this.economies) {
@@ -208,6 +236,8 @@ export class SimEngine {
       units: this.getUnits(),
       regions: this.getRegionStates(),
       countryEconomy: this.getCountryEconomySnapshot(),
+      wars: this.getWarsSnapshot(),
+      threats: this.getAllThreats(),
     };
   }
 
@@ -413,6 +443,133 @@ export class SimEngine {
     return getSupplyPenalty(u.regionId, cap, adj, crossings);
   }
 
+  // — T6 war queries
+
+  getWars(): War[] {
+    return Array.from(this.wars.values()).map((w) => ({ ...w }));
+  }
+
+  getWar(warId: string): War | undefined {
+    const w = this.wars.get(warId);
+    return w ? { ...w } : undefined;
+  }
+
+  getActiveWars(): War[] {
+    return this.getWars().filter((w) => w.status === "active");
+  }
+
+  getWarsForCountry(countryId: string): War[] {
+    return this.getWars().filter((w) => w.attackerId === countryId || w.defenderId === countryId);
+  }
+
+  getWarsSnapshot(): WarSnapshot[] {
+    const nowDay = this.getDaysElapsed();
+    return this.getWars().map((w) => {
+      const occ = getOccupiedForWar(w, this.regionStates);
+      const days = getWarDays(w, nowDay);
+      return {
+        warId: w.warId,
+        attackerId: w.attackerId,
+        defenderId: w.defenderId,
+        startDay: w.startDay,
+        startDate: w.startDate,
+        status: w.status,
+        endDay: w.endDay,
+        endDate: w.endDate,
+        endReason: w.endReason,
+        exhaustionAttacker: w.exhaustionAttacker,
+        exhaustionDefender: w.exhaustionDefender,
+        daysAtWar: days,
+        occupiedByAttacker: occ.occupiedByAttacker,
+        occupiedByDefender: occ.occupiedByDefender,
+      };
+    });
+  }
+
+  getThreat(countryId: string): number {
+    return this.threat.get(countryId) ?? 0;
+  }
+
+  getAllThreats(): Record<string, number> {
+    const out: Record<string, number> = {};
+    for (const [k, v] of this.threat.entries()) out[k] = v;
+    return out;
+  }
+
+  isAtWar(a: string, b: string): boolean {
+    for (const w of this.wars.values()) {
+      if (w.status !== "active") continue;
+      if ((w.attackerId === a && w.defenderId === b) || (w.attackerId === b && w.defenderId === a)) return true;
+    }
+    return false;
+  }
+
+  getOccupiedForWarId(warId: string): { occupiedByAttacker: string[]; occupiedByDefender: string[] } | null {
+    const w = this.wars.get(warId);
+    if (!w) return null;
+    return getOccupiedForWar(w, this.regionStates);
+  }
+
+  forecastDeclareWar(attacker: string, defender: string): ReturnType<typeof forecastDeclareWarPure> {
+    return forecastDeclareWarPure(attacker, defender, this.wars, this.getCountryIds());
+  }
+
+  forecastPeace(warId: string, proposer: string, type: PeaceType): { ok: boolean; reason?: string; aiPreview?: { accept: boolean; reasons: string[] }; available?: boolean } {
+    const w = this.wars.get(warId);
+    if (!w) return { ok: false, reason: WAR_RULES.messages.noWar };
+    if (w.status !== "active") return { ok: false, reason: WAR_RULES.messages.warNotActive };
+    if (proposer !== w.attackerId && proposer !== w.defenderId) return { ok: false, reason: WAR_RULES.messages.notParticipant };
+    const responder = proposer === w.attackerId ? w.defenderId : w.attackerId;
+    const occ = getOccupiedForWar(w, this.regionStates);
+    const days = getWarDays(w, this.getDaysElapsed());
+    const proposerUnits = this.getUnitsByCountry(proposer);
+    const responderUnits = this.getUnitsByCountry(responder);
+    const proposerStrength = totalStrength(proposerUnits);
+    const responderStrength = totalStrength(responderUnits);
+    const forceRatioResponder = computeForceRatio(responderStrength, proposerStrength);
+    const exhResponder = responder === w.attackerId ? w.exhaustionAttacker : w.exhaustionDefender;
+    const occupiedByProposer = proposer === w.attackerId ? occ.occupiedByAttacker.length : occ.occupiedByDefender.length;
+    const occupiedByResponder = proposer === w.attackerId ? occ.occupiedByDefender.length : occ.occupiedByAttacker.length;
+    const ai = evaluatePeaceAI({
+      war: w,
+      proposerId: proposer,
+      responderId: responder,
+      peaceType: type,
+      forceRatioResponder,
+      exhaustionResponder: exhResponder,
+      exhaustionProposer: proposer === w.attackerId ? w.exhaustionAttacker : w.exhaustionDefender,
+      occupiedByProposer,
+      occupiedByResponder,
+      daysAtWar: days,
+    });
+    return { ok: true, aiPreview: { accept: ai.accept, reasons: ai.reasons }, available: true };
+  }
+
+  private computeExhaustionForWar(w: War): void {
+    const days = getWarDays(w, this.getDaysElapsed());
+    const occ = getOccupiedForWar(w, this.regionStates);
+    const attLost = occ.occupiedByDefender.length;
+    const defLost = occ.occupiedByAttacker.length;
+    const attOccupied = occ.occupiedByAttacker.length;
+    const defOccupied = occ.occupiedByDefender.length;
+    w.exhaustionAttacker = computeExhaustion(days, w.casualtiesAttacker, attOccupied, attLost);
+    w.exhaustionDefender = computeExhaustion(days, w.casualtiesDefender, defOccupied, defLost);
+  }
+
+  private updateAllWarExhaustion(): void {
+    for (const w of this.wars.values()) {
+      if (w.status === "active") this.computeExhaustionForWar(w);
+    }
+  }
+
+  private findWarForCountries(a: string, b: string): War | undefined {
+    for (const w of this.wars.values()) {
+      if (w.status !== "active") continue;
+      if ((w.attackerId === a && w.defenderId === b) || (w.attackerId === b && w.defenderId === a)) return w;
+    }
+    return undefined;
+  }
+
   // — commands
 
   dispatch(cmd: Command): ValidationResult {
@@ -611,6 +768,8 @@ export class SimEngine {
           { regionId, from: current, to: newCtrl },
           `Регион ${regionId}: контроль ${current} → ${newCtrl}. Доход старого владельца пересчитан, промкомплексы потеряны.`
         );
+        // update war exhaustion immediately
+        this.updateAllWarExhaustion();
         break;
       }
       case "cancelProject": {
@@ -657,11 +816,255 @@ export class SimEngine {
         }
         break;
       }
+      case "declareWar": {
+        const res = this.handleDeclareWar(cmd.payload as Record<string, unknown>);
+        if (!res.ok) {
+          this.log.append(this.getDate(), "commandRejected", { command: cmd, reason: res.reason }, res.reason);
+          return res;
+        }
+        break;
+      }
+      case "proposePeace": {
+        const res = this.handleProposePeace(cmd.payload as Record<string, unknown>);
+        if (!res.ok) {
+          this.log.append(this.getDate(), "commandRejected", { command: cmd, reason: res.reason }, res.reason);
+          return res;
+        }
+        break;
+      }
       default: {
         this.log.append(this.getDate(), "commandAccepted", { command: cmd });
         break;
       }
     }
+    return { ok: true };
+  }
+
+  private handleDeclareWar(payload: Record<string, unknown>): ValidationResult {
+    const attacker = payload.attacker as string;
+    const defender = payload.defender as string;
+    const reasonText = (payload.reason as string | undefined) ?? "";
+    const forecast = forecastDeclareWarPure(attacker, defender, this.wars, this.getCountryIds());
+    if (!forecast.ok) {
+      return { ok: false, reason: forecast.unavailableReason ?? forecast.reason };
+    }
+    if (attacker === defender) return { ok: false, reason: WAR_RULES.messages.selfWar };
+    const known = new Set(this.getCountryIds());
+    if (!known.has(attacker) || !known.has(defender)) return { ok: false, reason: `${WAR_RULES.messages.unknownCountry}: ${!known.has(attacker) ? attacker : defender}` };
+    // check treasury cost (if any) — deduct from attacker economy? Cost 0 in A, so skip
+    const cost = WAR_RULES.declareWar.treasuryCost;
+    if (cost > 0) {
+      const eco = this.economies.get(attacker);
+      const ce = this.countryEconomy.get(attacker);
+      if (eco) {
+        if (eco.treasury >= cost) eco.treasury -= cost;
+        else {
+          const need = cost - eco.treasury;
+          eco.treasury = 0;
+          eco.debt += need;
+        }
+      }
+      if (ce) ce.treasury -= cost;
+    }
+    const warId = `war-${this.nextWarId++}`;
+    const war: War = {
+      warId,
+      attackerId: attacker,
+      defenderId: defender,
+      startDay: this.getDaysElapsed(),
+      startDate: this.getDate(),
+      status: "active",
+      exhaustionAttacker: WAR_RULES.exhaustion.perDay, // slight initial
+      exhaustionDefender: WAR_RULES.exhaustion.perDay,
+      casualtiesAttacker: 0,
+      casualtiesDefender: 0,
+    };
+    this.wars.set(warId, war);
+    // threat
+    const prevThreat = this.threat.get(attacker) ?? 0;
+    const delta = WAR_RULES.threat.aggressionIncrease;
+    const nextThreat = Math.min(WAR_RULES.threat.max, prevThreat + delta);
+    this.threat.set(attacker, nextThreat);
+    this.log.append(
+      this.getDate(),
+      "warDeclared",
+      { warId, attacker, defender, reason: reasonText, cost, threatBefore: prevThreat, threatAfter: nextThreat, forecast: forecast.consequences },
+      `война объявлена: ${attacker} → ${defender} (warId ${warId}). Цена казна ${cost}, угроза ${prevThreat}→${nextThreat}. Причины/последствия: ${forecast.consequences.join("; ")}${reasonText ? ` Причина: ${reasonText}` : ""}`
+    );
+    this.log.append(
+      this.getDate(),
+      "threatIncreased",
+      { countryId: attacker, delta, before: prevThreat, after: nextThreat },
+      `угроза ${attacker} +${delta}: ${prevThreat}→${nextThreat} (агрессия)`
+    );
+    this.computeExhaustionForWar(war);
+    return { ok: true };
+  }
+
+  private handleProposePeace(payload: Record<string, unknown>): ValidationResult {
+    const warId = payload.warId as string;
+    const proposer = payload.proposer as string;
+    const type = payload.type as PeaceType;
+    const allowed: PeaceType[] = ["white", "annexOccupied", "indemnity"];
+    if (!allowed.includes(type)) return { ok: false, reason: `${WAR_RULES.messages.unknownPeaceType}: ${type}` };
+    const war = this.wars.get(warId);
+    if (!war) return { ok: false, reason: WAR_RULES.messages.noWar };
+    if (war.status !== "active") return { ok: false, reason: WAR_RULES.messages.warNotActive };
+    if (proposer !== war.attackerId && proposer !== war.defenderId) return { ok: false, reason: WAR_RULES.messages.notParticipant };
+    const responder = proposer === war.attackerId ? war.defenderId : war.attackerId;
+    const occ = getOccupiedForWar(war, this.regionStates);
+    const days = getWarDays(war, this.getDaysElapsed());
+    const proposerUnits = this.getUnitsByCountry(proposer);
+    const responderUnits = this.getUnitsByCountry(responder);
+    const proposerStrength = totalStrength(proposerUnits);
+    const responderStrength = totalStrength(responderUnits);
+    const forceRatioResponder = computeForceRatio(responderStrength, proposerStrength);
+    const exhResponder = responder === war.attackerId ? war.exhaustionAttacker : war.exhaustionDefender;
+    const exhProposer = proposer === war.attackerId ? war.exhaustionAttacker : war.exhaustionDefender;
+    const occupiedByProposer = proposer === war.attackerId ? occ.occupiedByAttacker.length : occ.occupiedByDefender.length;
+    const occupiedByResponder = proposer === war.attackerId ? occ.occupiedByDefender.length : occ.occupiedByAttacker.length;
+
+    const aiEval = evaluatePeaceAI({
+      war,
+      proposerId: proposer,
+      responderId: responder,
+      peaceType: type,
+      forceRatioResponder,
+      exhaustionResponder: exhResponder,
+      exhaustionProposer: exhProposer,
+      occupiedByProposer,
+      occupiedByResponder,
+      daysAtWar: days,
+    });
+
+    // log proposal
+    this.log.append(
+      this.getDate(),
+      "peaceProposed",
+      { warId, proposer, responder, type, forceRatioResponder, exhaustionResponder: exhResponder, occupiedByProposer, occupiedByResponder, daysAtWar: days, aiWouldAccept: aiEval.accept, reasons: aiEval.reasons, debug: aiEval.debug },
+      `предложение мира ${type} в войне ${warId}: ${proposer} → ${responder}. ИИ ${aiEval.accept ? "согласен" : "отказывается"}: ${aiEval.reasons.join("; ")}`
+    );
+
+    if (!aiEval.accept) {
+      this.log.append(
+        this.getDate(),
+        "peaceRejected",
+        { warId, proposer, responder, type, reasons: aiEval.reasons, forceRatioResponder, exhaustionResponder: exhResponder, occupiedByProposer, daysAtWar: days, debug: aiEval.debug },
+        `мир отклонён ${responder} (${type}): ${aiEval.reasons.join("; ")} (сила ${forceRatioResponder.toFixed(2)}, истощение ${exhResponder.toFixed(0)}, оккупировано ${occupiedByProposer})`
+      );
+      return { ok: true };
+    }
+
+    // ACCEPTED — perform peace effects
+    war.status = "ended";
+    war.endDay = this.getDaysElapsed();
+    war.endDate = this.getDate();
+    war.endReason = type;
+
+    const annexedRegions: string[] = [];
+    let indemnityAmount = 0;
+    let indemnityFrom: string | null = null;
+    let indemnityTo: string | null = null;
+
+    if (type === "annexOccupied") {
+      // legalize all current controller != owner where participants involved: owner→controller
+      for (const rs of this.regionStates.values()) {
+        const isOccupiedByAttacker = rs.ownerId === war.defenderId && rs.controllerId === war.attackerId;
+        const isOccupiedByDefender = rs.ownerId === war.attackerId && rs.controllerId === war.defenderId;
+        if (isOccupiedByAttacker || isOccupiedByDefender) {
+          const prevOwner = rs.ownerId;
+          rs.ownerId = rs.controllerId;
+          this.regionStates.set(rs.regionId, rs);
+          annexedRegions.push(rs.regionId);
+          this.log.append(
+            this.getDate(),
+            "regionAnnexed",
+            { regionId: rs.regionId, prevOwner, newOwner: rs.ownerId, warId, type },
+            `аннексия: ${rs.regionId} владелец ${prevOwner}→${rs.ownerId} (контролёр ${rs.controllerId})`
+          );
+        }
+      }
+      // also need to ensure controlledRegions sets reflect? Those already track controller, not owner. For economy, loss of industrial region already handled via controller; but owner change doesn't affect income directly, only controller did. However annex legalizes, so future peace annex doesn't double count.
+      // For completeness, no extra economy transfer.
+    } else if (type === "indemnity") {
+      const amount = WAR_RULES.peace.indemnityAmount;
+      // Determine payer: loser pays winner. Loser is responder if responder is losing (as per AI score), otherwise proposer pays.
+      // Since AI accepted, responder is likely losing, so responder pays proposer. That's the typical indemnity demand.
+      // To make deterministic: if responder losing (forceRatio <1 or occupiedByProposer>0) then responder pays proposer, else proposer pays responder.
+      const responderLosing = forceRatioResponder < 1 || occupiedByProposer > 0 || exhResponder >= WAR_RULES.ai.exhaustionHigh;
+      let payer: string;
+      let receiver: string;
+      if (responderLosing) {
+        payer = responder;
+        receiver = proposer;
+      } else {
+        payer = proposer;
+        receiver = responder;
+      }
+      indemnityFrom = payer;
+      indemnityTo = receiver;
+      indemnityAmount = amount;
+      // Treasury transfer via economy (T4) + sync T5
+      const payerEco = this.economies.get(payer);
+      const payerCE = this.countryEconomy.get(payer);
+      const receiverEco = this.economies.get(receiver);
+      const receiverCE = this.countryEconomy.get(receiver);
+      // Deduct from payer
+      if (payerEco) {
+        // If payerEco has enough treasury, deduct; else go to debt logic similar to project cost
+        if (payerEco.treasury >= amount) {
+          payerEco.treasury = Math.round((payerEco.treasury - amount) * 100) / 100;
+        } else {
+          const need = amount - payerEco.treasury;
+          payerEco.treasury = 0;
+          payerEco.debt = Math.round((payerEco.debt + need) * 100) / 100;
+          // also record interest? Keep as is.
+        }
+        payerEco.lastChangeReason = `Контрибуция ${amount} выплачена ${receiver} по миру ${warId}`;
+      }
+      if (payerCE) {
+        payerCE.treasury -= amount;
+      }
+      if (receiverEco) {
+        receiverEco.treasury = Math.round((receiverEco.treasury + amount) * 100) / 100;
+        receiverEco.lastChangeReason = `Контрибуция ${amount} получена от ${payer} по миру ${warId}`;
+      }
+      if (receiverCE) {
+        receiverCE.treasury += amount;
+      }
+      this.log.append(
+        this.getDate(),
+        "indemnityPaid",
+        { warId, type, amount, from: payer, to: receiver, payerTreasuryAfter: payerEco?.treasury, payerDebtAfter: payerEco?.debt, receiverTreasuryAfter: receiverEco?.treasury },
+        `контрибуция ${amount}₥: ${payer} → ${receiver} по миру ${warId} (${type})`
+      );
+    } else {
+      // white: status quo, no owner change, no indemnity
+    }
+
+    this.log.append(
+      this.getDate(),
+      "peaceAccepted",
+      {
+        warId,
+        proposer,
+        responder,
+        type,
+        reasons: aiEval.reasons,
+        annexedRegions,
+        indemnityAmount,
+        indemnityFrom,
+        indemnityTo,
+        forceRatioResponder,
+        exhaustionResponder: exhResponder,
+        occupiedByProposer,
+        daysAtWar: days,
+      },
+      `мир принят ${responder} (${type}): ${aiEval.reasons.join("; ")}${annexedRegions.length ? ` аннексировано ${annexedRegions.join(", ")}` : ""}${indemnityAmount ? ` контрибуция ${indemnityAmount} ${indemnityFrom}→${indemnityTo}` : ""}`
+    );
+
+    // update exhaustion one final time (ended)
+    this.computeExhaustionForWar(war);
     return { ok: true };
   }
 
@@ -798,6 +1201,29 @@ export class SimEngine {
           this.units.set(defender.unitId, defAfter);
         }
 
+        // record casualties to war if applicable
+        const war = this.findWarForCountries(unit.countryId, defender.countryId);
+        if (war) {
+          // casualties attributed to respective sides (handle both directions)
+          if (war.attackerId === unit.countryId) {
+            war.casualtiesAttacker += result.attackerCasualties;
+            war.casualtiesDefender += result.defenderCasualties;
+          } else if (war.attackerId === defender.countryId) {
+            war.casualtiesAttacker += result.defenderCasualties;
+            war.casualtiesDefender += result.attackerCasualties;
+          } else {
+            // war between A and B but attacker/defender swapped relative to war orientation? Already covered both.
+            // generic: if unit country is attacker side vs defender side
+            // If war is between unit and defender, regardless of who is attacker in war declaration, casualties count per country.
+            // We'll attribute per country id match:
+            if (war.attackerId === unit.countryId) war.casualtiesAttacker += result.attackerCasualties;
+            else if (war.defenderId === unit.countryId) war.casualtiesDefender += result.attackerCasualties;
+            if (war.attackerId === defender.countryId) war.casualtiesAttacker += result.defenderCasualties;
+            else if (war.defenderId === defender.countryId) war.casualtiesDefender += result.defenderCasualties;
+          }
+          this.computeExhaustionForWar(war);
+        }
+
         if (result.winner === "attacker") {
           const prevController = toRegionState.controllerId;
           toRegionState.controllerId = unit.countryId;
@@ -863,6 +1289,8 @@ export class SimEngine {
             `бой отбит ${toRegionId}: ${defender.unitId} удержал, ${result.breakdown.reason}`
           );
         }
+        // update war exhaustion after occupation change
+        this.updateAllWarExhaustion();
         return { ok: true };
       } else {
         const prevController = toRegionState.controllerId;
@@ -880,6 +1308,7 @@ export class SimEngine {
         this.units.set(unit.unitId, unit);
         this.log.append(this.getDate(), "regionCaptured", { regionId: toRegionId, prevController, newController: unit.countryId, ownerUnchanged: toRegionState.ownerId, via: moveCheck.via }, `захват без боя ${toRegionId} ${prevController}→${unit.countryId} (чья земля: владелец ${toRegionState.ownerId})`);
         this.log.append(this.getDate(), "unitMoved", { unitId, fromRegionId, toRegionId, via: moveCheck.via, capturedEmpty: true }, `перемещение ${unitId} ${fromRegionId}→${toRegionId} через ${moveCheck.via}, захват пустого`);
+        this.updateAllWarExhaustion();
         return { ok: true };
       }
     } else {
@@ -968,7 +1397,7 @@ export class SimEngine {
 
   /**
    * Advance simulation by integer game days.
-   * Union tick: daily army (recruitment + upkeep) + project completions + monthly economy at day 1
+   * Union tick: daily army (recruitment + upkeep) + project completions + monthly economy at day 1 + war exhaustion
    */
   tick(days: number): void {
     if (!Number.isInteger(days) || days < 0) {
@@ -982,6 +1411,7 @@ export class SimEngine {
       const dailyRand = this.rng.next();
       this.checkProjectCompletions();
       this.processDailyArmyTick();
+      this.updateAllWarExhaustion();
       const dateStr = this.getDate();
       const day = Number(dateStr.slice(8, 10));
       if (day === 1) {
