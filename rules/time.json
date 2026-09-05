@@ -1,0 +1,10 @@
+{
+  "speeds": {
+    "slow": 1,
+    "normal": 3,
+    "fast": 7
+  },
+  "defaultSpeed": "normal",
+  "baseStepDays": 1,
+  "description": "Days per real second for each speed. Used by fixed-timestep accumulator. Frame rate must not affect sim result."
+}
