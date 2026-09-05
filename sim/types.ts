@@ -31,6 +31,9 @@ export interface SimSnapshot {
   seed: number;
   tickCount: number;
   customState: Record<string, number>;
+  // T4 economy snapshot (if engine has economy)
+  economies?: Record<string, { treasury: number; debt: number; gdp: number; taxRate: number; weights: Record<string, number>; lastIncome: number; lastExpense: number; lastInterest: number; lastGrowthRate: number; lastSupport: number }>;
+  projects?: Array<{ id: string; countryId: string; regionId: string; type: string; status: string; startDate: string; endDate: string }>;
 }
 
 export type Speed = "slow" | "normal" | "fast" | "paused";

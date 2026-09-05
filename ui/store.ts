@@ -12,12 +12,14 @@ interface GameStore {
   isPaused: boolean;
   accumulator: TimeAccumulator;
   lastDate: string;
-  // map / selection
+  // map / selection (T3)
   mapMode: MapMode;
   selectedCountryId: string | null;
   selectedRegionId: string | null;
   playerCountryId: string | null;
   hasStarted: boolean;
+  // T4 compat alias — keeps EconomyPanel contract while preserving T3 nullable model
+  setSelectedCountry: (id: string) => void;
   // actions
   setSpeed: (s: Speed) => void;
   togglePause: () => void;
@@ -144,6 +146,19 @@ export const useGameStore = create<GameStore>((set, get) => {
       });
     },
     resetSelection: () => set({ selectedCountryId: null, selectedRegionId: null }),
+    // T4 compat: alias to selectCountry for existing EconomyPanel callers
+    setSelectedCountry: (id) => {
+      const st = get();
+      // delegate to selectCountry validation
+      if (!st.scenario.countries.some((c) => c.countryId === id)) return;
+      // reuse logic via direct set to keep T4 simple path
+      let nextRegion = st.selectedRegionId;
+      if (nextRegion) {
+        const reg = st.scenario.regions.find((r) => r.regionId === nextRegion);
+        if (!reg || reg.countryId !== id) nextRegion = null;
+      }
+      set({ selectedCountryId: id, selectedRegionId: nextRegion });
+    },
   };
 });
 

@@ -5,6 +5,7 @@ import MapCanvas from "./components/MapCanvas.js";
 import SidePanel from "./components/SidePanel.js";
 import EventLog from "./components/EventLog.js";
 import CountrySelection from "./components/CountrySelection.js";
+import EconomyPanel from "./EconomyPanel.js";
 import ru from "./locales/ru.json";
 import "./styles/atlas.css";
 
@@ -66,6 +67,9 @@ export default function App() {
       setShowSelection(true);
     }
   }, [hasStarted]);
+
+  // economy panel country: prefer selection, else player, else first scenario country
+  const economyCountryId = selectedCountryId ?? playerCountryId ?? scenario.countries[0]?.countryId ?? null;
 
   return (
     <div style={{ minHeight: "100vh", background: "#fcfcf9", color: "#111827" }}>
@@ -244,9 +248,18 @@ export default function App() {
             </div>
           </div>
 
-          {/* right column: side panel */}
+          {/* right column: side panel + economy + debug */}
           <div style={{ position: "sticky", top: 12, display: "flex", flexDirection: "column", gap: 12 }}>
             <SidePanel />
+
+            {/* T4 EconomyPanel — union mount per contract */}
+            {economyCountryId ? (
+              <EconomyPanel sim={sim} countryId={economyCountryId} />
+            ) : (
+              <div style={{ border: "1px dashed #d1d5db", borderRadius: 8, padding: 8, fontSize: 11, color: "#6b7280" }}>
+                Выберите страну для экономики
+              </div>
+            )}
 
             {/* quick stats debug */}
             <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, background: "#fff", padding: "8px 10px", fontSize: 11, color: "#6b7280", lineHeight: 1.4 }}>

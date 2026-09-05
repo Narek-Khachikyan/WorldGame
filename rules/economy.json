@@ -1,0 +1,86 @@
+{
+  "_note": "Модельные коэффициенты экономики Slice A. Не выдавать за реальную статистику. Факты в data/, балансы в rules/.",
+  "treasury": {
+    "initial": 800
+  },
+  "gdp": {
+    "baseMonthly": 120,
+    "baseRate": 0.002
+  },
+  "income": {
+    "tax": {
+      "min": 0.05,
+      "max": 0.6,
+      "default": 0.25,
+      "step": 0.01,
+      "growthPenaltyFactor": 0.02,
+      "supportPenaltyFactor": 35
+    },
+    "projectBonus": {
+      "industrialComplex": 12,
+      "powerUnit": 8,
+      "regionInfra": 4
+    }
+  },
+  "expense": {
+    "caps": {
+      "defense": 40,
+      "infra": 25,
+      "social": 35,
+      "edu": 25
+    },
+    "defaultWeights": {
+      "defense": 0.5,
+      "infra": 0.5,
+      "social": 0.5,
+      "edu": 0.5
+    },
+    "eduLagMonths": 6
+  },
+  "growth": {
+    "baseRate": 0.002,
+    "infraFactor": 0.005,
+    "eduFactor": 0.007
+  },
+  "support": {
+    "base": 50,
+    "socialFactor": 25,
+    "taxFactor": 35,
+    "infraFactor": 4
+  },
+  "debt": {
+    "interestRateMonthly": 0.015
+  },
+  "projects": {
+    "industrialComplex": {
+      "price": 300,
+      "durationDays": 90,
+      "slotLimitPerRegion": 2,
+      "incomeBonus": 12,
+      "gdpBonus": 15,
+      "nameRu": "Промкомплекс",
+      "descriptionRu": "Крупный промышленный объект. Сильно повышает доход.",
+      "riskRu": "Высокая цена и длительный срок (90 дн.). Требует свободных слотов."
+    },
+    "powerUnit": {
+      "price": 220,
+      "durationDays": 60,
+      "slotLimitPerRegion": 2,
+      "incomeBonus": 8,
+      "gdpBonus": 10,
+      "nameRu": "Энергоблок",
+      "descriptionRu": "Энергетическая мощность для промышленности.",
+      "riskRu": "Средняя цена и срок (60 дн.)."
+    },
+    "regionInfra": {
+      "price": 120,
+      "durationDays": 45,
+      "slotLimitPerRegion": 2,
+      "incomeBonus": 4,
+      "gdpBonus": 6,
+      "nameRu": "Инфраструктура региона",
+      "descriptionRu": "Дороги и логистика региона. Дешево улучшает экономику.",
+      "riskRu": "Низкая цена, быстрый ввод (45 дн.), но скромный эффект."
+    }
+  }
+}
