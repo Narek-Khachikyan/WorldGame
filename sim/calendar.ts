@@ -60,6 +60,12 @@ export class GameCalendar {
     this._daysElapsed += days;
   }
 
+  /** Restore from save — sets date and daysElapsed without bypassing encapsulation via casts. */
+  restoreState(dateString: string, daysElapsed: number): void {
+    this.current = parseGameDate(dateString);
+    this._daysElapsed = daysElapsed;
+  }
+
   clone(): GameCalendar {
     const c = new GameCalendar(formatGameDate(this.current));
     // @ts-ignore private override for clone fidelity

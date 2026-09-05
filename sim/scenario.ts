@@ -409,11 +409,27 @@ export function validateScenario(data: {
       if (!l.incumbent.title) errors.push(`leaders ${l.countryId} incumbent missing title`);
       if (!l.incumbent.since || !isValidDateString(l.incumbent.since)) errors.push(`leaders ${l.countryId} incumbent since invalid date ${l.incumbent.since}`);
       if (!l.incumbent.source) errors.push(`leaders ${l.countryId} incumbent missing source`);
+      // Free-license guard (C): only free licenses, else initials, local path under data/portraits/
+      const freeLicRe = /CC0|CC BY|CC BY-SA|public domain/i;
+      const checkPortrait = (who: string, entry: unknown) => {
+        const e = entry as { portrait?: string | null; portraitLicense?: string };
+        if (e.portrait) {
+          const p = e.portrait as string;
+          const lic = e.portraitLicense as string | undefined;
+          if (!lic || !freeLicRe.test(lic)) errors.push(`leaders ${who} portrait requires free license (CC0/CC BY/CC BY-SA/public domain), got ${String(lic)}`);
+          if (!p.startsWith("data/portraits/") && !p.startsWith("/data/portraits/") && !p.startsWith("./data/portraits/")) {
+            errors.push(`leaders ${who} portrait must be local under data/portraits/, got ${p}`);
+          }
+          if (p.startsWith("http://") || p.startsWith("https://")) errors.push(`leaders ${who} portrait must not be hotlink, got ${p}`);
+        }
+      };
+      checkPortrait(`${l.countryId} incumbent`, l.incumbent);
       if (!Array.isArray(l.pool) || l.pool.length < 2 || l.pool.length > 3) errors.push(`leaders ${l.countryId} pool must be 2-3 spares, got ${l.pool?.length}`);
       else {
         for (const p of l.pool) {
           if (!p.name || !p.title || !p.since || !p.source) errors.push(`leaders ${l.countryId} pool entry missing fields ${JSON.stringify(p)}`);
           if (p.since && !isValidDateString(p.since)) errors.push(`leaders ${l.countryId} pool since invalid ${p.since}`);
+          checkPortrait(`${l.countryId} pool ${p.name}`, p as unknown as Record<string, unknown>);
         }
       }
     }

@@ -6,25 +6,27 @@ import type { Command, ValidationResult } from "./types.js";
  * Future tickets extend whitelist without breaking existing tests.
  */
 
-const KNOWN_TYPES = new Set([
-  "noop",
-  "testPing",
-  "incrementCounter",
-  "setTax",
-  "setWeights",
-  "startProject",
-  "setRegionController",
-  // alias for loss test readability
-  "loseRegion",
-  "cancelProject",
-  "recruitUnit",
-  "moveUnit",
-  "setStance",
-  "declareWar",
-  "proposePeace",
-  "changeRegime",
-  "changeLeader",
-]);
+// Shared COMMAND_SPECS map — single source for known types used by both validator and engine dispatch (Repeated Switches fix).
+// To add a new command, update this map and ensure engine dispatch + rules + UI checklist in sim/engine.ts header.
+export const COMMAND_SPECS: Record<string, { payload: string }> = {
+  noop: { payload: "none" },
+  testPing: { payload: "object?" },
+  incrementCounter: { payload: "{key, delta}" },
+  setTax: { payload: "{countryId, taxRate}" },
+  setWeights: { payload: "{countryId, weights}" },
+  startProject: { payload: "{countryId, regionId, projectType}" },
+  setRegionController: { payload: "{regionId, newControllerId}" },
+  loseRegion: { payload: "{regionId, newControllerId?}" },
+  cancelProject: { payload: "{projectId}" },
+  recruitUnit: { payload: "{countryId, regionId, personnel?, equipment?}" },
+  moveUnit: { payload: "{unitId, toRegionId}" },
+  setStance: { payload: "{unitId, stance}" },
+  declareWar: { payload: "{attacker, defender}" },
+  proposePeace: { payload: "{warId, proposer, type}" },
+  changeRegime: { payload: "{countryId, newRegime}" },
+  changeLeader: { payload: "{countryId, newLeaderId}" },
+};
+const KNOWN_TYPES = new Set(Object.keys(COMMAND_SPECS));
 
 export function validateCommand(cmd: unknown): ValidationResult {
   if (cmd === null || cmd === undefined || typeof cmd !== "object") {

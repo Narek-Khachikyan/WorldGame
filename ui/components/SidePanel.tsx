@@ -185,11 +185,12 @@ export default function SidePanel() {
               const aiLast = sim.getAiLastRun(selectedCountry.countryId);
               const aiEvents = sim.getEventLog().filter((e)=> e.kind==="aiDecision" && (e.payload as {countryId?:string})?.countryId===selectedCountry.countryId).slice(-2).reverse();
               return (
-                <div style={{ border: `1px solid ${isPlayer ? "#e5e7eb" : "#c7d2fe"}`, borderRadius: 8, padding: "8px 10px", background: isPlayer ? "#f9fafb" : "#eff6ff" }}>
+                <div title="debug — профили внутренние, переключатель для тестирования (finding E)" style={{ border: `1px solid ${isPlayer ? "#e5e7eb" : "#c7d2fe"}`, borderRadius: 8, padding: "8px 10px", background: isPlayer ? "#f9fafb" : "#eff6ff" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <strong style={{ fontSize: 12 }}>ИИ — {isPlayer ? "игрок (ИИ выкл.)" : `профиль ${aiProfile}`}</strong>
-                    <span style={{ fontSize: 10, background: isPlayer ? "#f3f4f6" : "#e0e7ff", border: "1px solid #c7d2fe", padding: "2px 6px", borderRadius: 999 }}>{isPlayer ? "вы" : aiProfile === "cautious" ? "осторожный" : "амбициозный"}</span>
+                    <strong style={{ fontSize: 12 }}>ИИ — {isPlayer ? "игрок (ИИ выкл.)" : `профиль ${aiProfile} (debug)`}</strong>
+                    <span title="debug" style={{ fontSize: 10, background: isPlayer ? "#f3f4f6" : "#e0e7ff", border: "1px solid #c7d2fe", padding: "2px 6px", borderRadius: 999 }}>{isPlayer ? "вы" : aiProfile === "cautious" ? "осторожный" : "амбициозный"}</span>
                   </div>
+                  <div style={{ fontSize: 10, color: "#6b7280", marginTop: 2, fontFamily: "monospace" }}>профили внутренние (hashCountryToProfile), UI — debug для тестирования; см. README.</div>
                   <div style={{ fontSize: 11, color: "#374151", marginTop: 4, lineHeight: 1.35 }}>
                     {isPlayer
                       ? "Эта страна под вашим управлением — ИИ за неё не ходит. Все остальные ИИ каждые 14 дн. + по событиям (война/мир/банкротство/выборы) действуют по тем же правилам: платят, строятся в срок, гарнизон столицы, экономика → война только при ~1.5× и выгоде. Теряет — просит мир."

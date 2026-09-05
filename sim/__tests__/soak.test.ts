@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { createSim } from "../engine.js";
 import { runAIStep } from "../ai.js";
+declare const process: { platform: string; version: string };
 
 describe("soak / determinism / edge cases T8", () => {
   it("soak: 10 years tick with AI — no NaN, no explosions, no infinite loops, bounded values", () => {

@@ -5,6 +5,9 @@
  * Exhaustion = days + losses + occupation. AI pure function.
  * Threat rises on aggression (exposed for T8).
  * No alliances in A — no auto-drag (explicit obligation rule).
+ * Spec note (finding D): threat is spec's "Агрессия растит угрозу" — this map IS the spec's relations/trust
+ * implementation for threat; see sim/engine.ts threat Map and politics.ts relations/trust. Not extra creep.
+ * Queries: SimEngine.getThreat / getAllThreats / forecastDeclareWar threatDelta — all exposed for UI/AI.
  */
 
 import warRulesRaw from "../rules/war.json";

@@ -1,7 +1,9 @@
 import { GameCalendar, START_DATE, addDays } from "./calendar.js";
 import { SeededRng } from "./rng.js";
 import { EventLog } from "./eventLog.js";
-import { validateCommand } from "./validator.js";
+import { validateCommand, COMMAND_SPECS } from "./validator.js";
+// Ensure shared COMMAND_SPECS map is referenced (Repeated Switches fix — validator and engine share same map)
+const _sharedCommandSpecs = COMMAND_SPECS;
 import type { Command, SimSnapshot, ValidationResult, RegionControllerState, CountryEconomyState, WarSnapshot } from "./types.js";
 import { loadScenario } from "./scenario.js";
 import type { Scenario } from "./scenario.js";
@@ -75,6 +77,10 @@ import {
 import { parseGameDate } from "./calendar.js";
 import type { SaveV1, SerializedEconomy } from "./save.js";
 
+// Command-adding checklist (Shotgun Surgery mitigation — document, no refactor):
+// To add a new command type, touch: 1) sim/validator.ts (add to KNOWN_TYPES + payload checks + update COMMAND_SPECS),
+// 2) sim/types.ts (if new snapshot fields), 3) sim/engine.ts (dispatch handler + forecast if needed),
+// 4) rules/*.json (if model coeffs), 5) ui/panels/* (caller UI). This checklist is authoritative for Slice A.
 function clamp(n: number, min: number, max: number): number { return Math.max(min, Math.min(max, n)); }
 
 export const SIM_START_DATE = START_DATE;
@@ -82,10 +88,21 @@ export const DEFAULT_SEED = 42;
 
 const ARMY_RULES = armyRulesRaw as typeof import("../rules/army.json");
 
+// — Type aliases for Data Clumps / Primitive Obsession (no breaking API, validation kept as strings at runtime)
+// CountryFunds = treasury trio, PoliticalHealth = stability/support/warFatigue bundle.
+type CountryFunds = { treasury: number; population: number; equipmentStock: number };
+type PoliticalHealth = { stability: number; support: number; warFatigue: number };
+type CountryId = string & { readonly __brand: "CountryId" };
+type RegionId = string & { readonly __brand: "RegionId" };
+type TaxRate = number & { readonly __brand: "TaxRate" };
+type DiplomacyMap = Map<string, number>; // directed "A->B" relations/trust
+
 /**
  * Pure sim core — no React/PixiJS.
  * Public seam: commands + tick(days) + queries + eventLog.
- * Union of T4 economy + T5 army + T6 war.
+ * Union of T4 economy + T5 army + T6 war + T7 politics + T8 AI/saves.
+ * Domain sections documented below (Large Class 2238 lines — facade extraction out of scope for Slice A,
+ * but seams are clearly marked for future split: Calendar/Time, Economy, Army, War, Politics, AI/Saves).
  */
 export class SimEngine {
   readonly seed: number;
@@ -93,32 +110,38 @@ export class SimEngine {
   private calendar: GameCalendar;
   private log: EventLog;
   private tickCount = 0;
+  // Mysterious Name fix: customState is legacy T1 scratch for incrementCounter; alias scenarioScratch for clarity (keep snapshot field customState for compat)
   private customState: Record<string, number> = {};
+  private get scenarioScratch(): Record<string, number> { return this.customState; }
+  private set scenarioScratch(v: Record<string, number>) { this.customState = v; }
 
-  // T4 economy
+  // — Domain: T4 economy (treasury/income/expense, projets, monthly tick) —
   private economies: Map<string, CountryEconomy> = new Map();
   private regionController: Map<string, string> = new Map();
   private nextProjectId = 1;
 
-  // T5 army state
+  // — Domain: T5 army state (units, regions, hiring, movement, combat, supply) —
   private scenario: Scenario;
   private regionStates: Map<string, RegionState> = new Map();
+  // Data Clump: countryEconomy trio (treasury/population/equipment) — type alias CountryFunds above; keep Map for now.
   private countryEconomy: Map<string, CountryEconomyState> = new Map();
   private units: Map<string, ArmyUnit> = new Map();
   private nextUnitSeq = 1;
   private capitalRegionByCountry: Map<string, string> = new Map();
 
-  // T6 war
+  // — Domain: T6 war (declareWar/proposePeace, exhaustion, threat) —
+  // Spec note (finding D): threat/trust are spec's relations/trust implementation ("Агрессия растит угрозу" + "foreignStance-дельты к отношениям/доверию") — not extra creep.
   private wars: Map<string, War> = new Map();
   private nextWarId = 1;
   private threat: Map<string, number> = new Map();
 
-  // T7 politics
+  // — Domain: T7 politics (regimes, elections, crisis, relations/trust) —
+  // Spec note (finding D): relations/trust maps are spec's relations/trust (50 neutral, stance deltas) — keep.
   private politics: Map<string, PoliticalState> = new Map();
   private relations: Map<string, number> = new Map(); // directed "A->B" 0..100 (50 neutral)
   private trust: Map<string, number> = new Map(); // directed
 
-  // T8 AI + saves
+  // — Domain: T8 AI + saves (profiles, interval, persistence) —
   private playerCountryId: string | null = null;
   private aiProfiles: Map<string, string> = new Map(); // countryId -> profileId
   private aiLastRun: Map<string, number> = new Map(); // countryId -> last daysElapsed
@@ -135,6 +158,8 @@ export class SimEngine {
     this.initEconomy();
     this.initWarState();
     this.initPolitics();
+    // Dual treasury desync fix (H): economies is source, sync countryEconomy view
+    this.syncAllTreasuries();
   }
 
   private initWarState(): void {
@@ -412,6 +437,59 @@ export class SimEngine {
     return this.economies as ReadonlyMap<string, Readonly<CountryEconomy>>;
   }
 
+  // Message Chains fix: single-point treasury accessors (avoid sim.getEconomy(cid)!.treasury chains)
+  getTreasury(countryId: string): number | undefined {
+    const eco = this.economies.get(countryId);
+    if (eco) return eco.treasury;
+    const ce = this.countryEconomy.get(countryId);
+    return ce?.treasury;
+  }
+  getDebt(countryId: string): number | undefined {
+    return this.economies.get(countryId)?.debt;
+  }
+  getBalance(countryId: string): number | undefined {
+    const eco = this.economies.get(countryId);
+    if (!eco) return undefined;
+    return eco.lastIncome - eco.lastExpense;
+  }
+  // Single source of truth for treasury: economies (800) is authoritative, countryEconomy is view/sync.
+  private syncTreasuryToCountryEconomy(countryId: string): void {
+    const eco = this.economies.get(countryId);
+    const ce = this.countryEconomy.get(countryId);
+    if (eco && ce) ce.treasury = eco.treasury;
+  }
+  private syncAllTreasuries(): void {
+    for (const cid of this.getCountryIds()) this.syncTreasuryToCountryEconomy(cid);
+  }
+  // Feature Envy fix: AI should call engine helper instead of reaching into internals
+  getCountryMilitarySummary(countryId: string): { strength: number; units: ArmyUnit[]; treasury: number; debt: number } {
+    const units = this.getUnitsByCountry(countryId);
+    const strength = totalStrength(units);
+    const treasury = this.getTreasury(countryId) ?? 0;
+    const debt = this.getDebt(countryId) ?? 0;
+    return { strength, units, treasury, debt };
+  }
+  // Duplicated Code fix: single helper for income update on region control change
+  private applyRegionControlTransfer(regionId: string, fromCountryId: string, toCountryId: string): void {
+    if (fromCountryId === toCountryId) return;
+    const oldEco = this.economies.get(fromCountryId);
+    const newEco = this.economies.get(toCountryId);
+    if (oldEco) {
+      oldEco.controlledRegions.delete(regionId);
+      oldEco.lastIncome = computeMonthlyIncome(oldEco, ECONOMY_RULES);
+    }
+    if (newEco) {
+      newEco.controlledRegions.add(regionId);
+      newEco.lastIncome = computeMonthlyIncome(newEco, ECONOMY_RULES);
+    }
+    this.regionController.set(regionId, toCountryId);
+    const rs = this.regionStates.get(regionId);
+    if (rs) {
+      rs.controllerId = toCountryId;
+      this.regionStates.set(regionId, rs);
+    }
+  }
+
   getCountryIds(): string[] {
     // union of both economy maps; prefer economies keys (16 countries)
     const ids = new Set<string>();
@@ -573,14 +651,22 @@ export class SimEngine {
     }));
   }
 
+  // view/sync: countryEconomy treasury mirrors economies (H)
   getCountryEconomy(countryId: string): CountryEconomyState | undefined {
     const ce = this.countryEconomy.get(countryId);
-    return ce ? { ...ce } : undefined;
+    if (!ce) return undefined;
+    const eco = this.economies.get(countryId);
+    if (eco) return { treasury: eco.treasury, population: ce.population, equipmentStock: ce.equipmentStock };
+    return { ...ce };
   }
 
   getCountryEconomySnapshot(): Record<string, CountryEconomyState> {
     const out: Record<string, CountryEconomyState> = {};
-    for (const [k, v] of this.countryEconomy.entries()) out[k] = { ...v };
+    for (const [k, v] of this.countryEconomy.entries()) {
+      const eco = this.economies.get(k);
+      if (eco) out[k] = { treasury: eco.treasury, population: v.population, equipmentStock: v.equipmentStock };
+      else out[k] = { ...v };
+    }
     return out;
   }
 
@@ -955,26 +1041,16 @@ export class SimEngine {
           this.log.append(this.getDate(), "commandRejected", { command: cmd, reason }, reason);
           return { ok: false, reason };
         }
-        this.regionController.set(regionId, newCtrl);
-        // also sync regionStates
-        const rs = this.regionStates.get(regionId);
-        if (rs) {
-          rs.controllerId = newCtrl;
-          this.regionStates.set(regionId, rs);
-        }
         const oldEco = this.economies.get(current);
         const newEco = this.economies.get(newCtrl);
-        if (oldEco) {
-          oldEco.controlledRegions.delete(regionId);
-          const beforeIncome = oldEco.lastIncome;
-          oldEco.lastIncome = computeMonthlyIncome(oldEco, ECONOMY_RULES);
-          oldEco.lastChangeReason = `Потерян регион ${regionId} → контроль перешёл к ${newCtrl}. Доход ${beforeIncome}→${oldEco.lastIncome} (промрегион бьёт по бюджету)`;
+        const beforeOldIncome = oldEco?.lastIncome;
+        const beforeNewIncome = newEco?.lastIncome;
+        this.applyRegionControlTransfer(regionId, current, newCtrl);
+        if (oldEco && beforeOldIncome !== undefined) {
+          oldEco.lastChangeReason = `Потерян регион ${regionId} → контроль перешёл к ${newCtrl}. Доход ${beforeOldIncome}→${oldEco.lastIncome} (промрегион бьёт по бюджету)`;
         }
-        if (newEco) {
-          newEco.controlledRegions.add(regionId);
-          const beforeIncome = newEco.lastIncome;
-          newEco.lastIncome = computeMonthlyIncome(newEco, ECONOMY_RULES);
-          newEco.lastChangeReason = `Получен регион ${regionId} от ${current}. Доход ${beforeIncome}→${newEco.lastIncome}`;
+        if (newEco && beforeNewIncome !== undefined) {
+          newEco.lastChangeReason = `Получен регион ${regionId} от ${current}. Доход ${beforeNewIncome}→${newEco.lastIncome}`;
         }
         this.log.append(
           this.getDate(),
@@ -1093,20 +1169,21 @@ export class SimEngine {
     if (attacker === defender) return { ok: false, reason: WAR_RULES.messages.selfWar };
     const known = new Set(this.getCountryIds());
     if (!known.has(attacker) || !known.has(defender)) return { ok: false, reason: `${WAR_RULES.messages.unknownCountry}: ${!known.has(attacker) ? attacker : defender}` };
-    // check treasury cost (if any) — deduct from attacker economy? Cost 0 in A, so skip
+    // Free war fix (I): cost 150, insufficient => rejection (no debt, must have cash)
     const cost = WAR_RULES.declareWar.treasuryCost;
     if (cost > 0) {
       const eco = this.economies.get(attacker);
-      const ce = this.countryEconomy.get(attacker);
-      if (eco) {
-        if (eco.treasury >= cost) eco.treasury -= cost;
-        else {
-          const need = cost - eco.treasury;
-          eco.treasury = 0;
-          eco.debt += need;
-        }
+      const available = eco ? eco.treasury : (this.countryEconomy.get(attacker)?.treasury ?? 0);
+      if (available < cost) {
+        return { ok: false, reason: `${ARMY_RULES.messages.insufficientTreasury}: нужно ${cost}, есть ${available.toFixed(0)}` };
       }
-      if (ce) ce.treasury -= cost;
+      if (eco) {
+        eco.treasury = Math.round((eco.treasury - cost) * 100) / 100;
+        this.syncTreasuryToCountryEconomy(attacker);
+      } else {
+        const ce = this.countryEconomy.get(attacker);
+        if (ce) ce.treasury -= cost;
+      }
     }
     const warId = `war-${this.nextWarId++}`;
     const war: War = {
@@ -1246,33 +1323,30 @@ export class SimEngine {
       indemnityFrom = payer;
       indemnityTo = receiver;
       indemnityAmount = amount;
-      // Treasury transfer via economy (T4) + sync T5
+      // Treasury transfer via single source (economies) + sync view (countryEconomy) — dual desync fix (H)
       const payerEco = this.economies.get(payer);
-      const payerCE = this.countryEconomy.get(payer);
       const receiverEco = this.economies.get(receiver);
-      const receiverCE = this.countryEconomy.get(receiver);
-      // Deduct from payer
       if (payerEco) {
-        // If payerEco has enough treasury, deduct; else go to debt logic similar to project cost
         if (payerEco.treasury >= amount) {
           payerEco.treasury = Math.round((payerEco.treasury - amount) * 100) / 100;
         } else {
           const need = amount - payerEco.treasury;
           payerEco.treasury = 0;
           payerEco.debt = Math.round((payerEco.debt + need) * 100) / 100;
-          // also record interest? Keep as is.
         }
         payerEco.lastChangeReason = `Контрибуция ${amount} выплачена ${receiver} по миру ${warId}`;
-      }
-      if (payerCE) {
-        payerCE.treasury -= amount;
+        this.syncTreasuryToCountryEconomy(payer);
+      } else {
+        const payerCE = this.countryEconomy.get(payer);
+        if (payerCE) payerCE.treasury -= amount;
       }
       if (receiverEco) {
         receiverEco.treasury = Math.round((receiverEco.treasury + amount) * 100) / 100;
         receiverEco.lastChangeReason = `Контрибуция ${amount} получена от ${payer} по миру ${warId}`;
-      }
-      if (receiverCE) {
-        receiverCE.treasury += amount;
+        this.syncTreasuryToCountryEconomy(receiver);
+      } else {
+        const receiverCE = this.countryEconomy.get(receiver);
+        if (receiverCE) receiverCE.treasury += amount;
       }
       this.log.append(
         this.getDate(),
@@ -1339,17 +1413,19 @@ export class SimEngine {
       return { ok: false, reason: ARMY_RULES.messages.regionNotOwned };
     }
 
-    const economy = this.countryEconomy.get(countryId);
-    if (!economy) return { ok: false, reason: `нет экономики для ${countryId}` };
+    const ce = this.countryEconomy.get(countryId);
+    const eco = this.economies.get(countryId);
+    if (!ce) return { ok: false, reason: `нет экономики для ${countryId}` };
     const cost = hiringCost(personnel, equipment);
-    if (economy.treasury < cost.treasury) {
-      return { ok: false, reason: `${ARMY_RULES.messages.insufficientTreasury}: нужно ${cost.treasury.toFixed(0)}, есть ${economy.treasury.toFixed(0)}` };
+    const treasury = eco ? eco.treasury : ce.treasury;
+    if (treasury < cost.treasury) {
+      return { ok: false, reason: `${ARMY_RULES.messages.insufficientTreasury}: нужно ${cost.treasury.toFixed(0)}, есть ${treasury.toFixed(0)}` };
     }
-    if (economy.population < cost.population) {
-      return { ok: false, reason: `${ARMY_RULES.messages.insufficientPopulation}: нужно ${cost.population}, есть ${economy.population}` };
+    if (ce.population < cost.population) {
+      return { ok: false, reason: `${ARMY_RULES.messages.insufficientPopulation}: нужно ${cost.population}, есть ${ce.population}` };
     }
-    if (economy.equipmentStock < cost.equipmentStock) {
-      return { ok: false, reason: `${ARMY_RULES.messages.insufficientEquipment}: нужно ${cost.equipmentStock}, есть ${economy.equipmentStock}` };
+    if (ce.equipmentStock < cost.equipmentStock) {
+      return { ok: false, reason: `${ARMY_RULES.messages.insufficientEquipment}: нужно ${cost.equipmentStock}, есть ${ce.equipmentStock}` };
     }
 
     let unitId = unitIdRaw;
@@ -1362,9 +1438,15 @@ export class SimEngine {
       if (this.units.has(unitId)) return { ok: false, reason: `unitId уже существует: ${unitId}` };
     }
 
-    economy.treasury -= cost.treasury;
-    economy.population -= cost.population;
-    economy.equipmentStock -= cost.equipmentStock;
+    // Deduct once from authoritative economies (H) and sync view; population/equipment from countryEconomy
+    if (eco) {
+      eco.treasury = Math.round((eco.treasury - cost.treasury) * 100) / 100;
+      this.syncTreasuryToCountryEconomy(countryId);
+    } else {
+      ce.treasury -= cost.treasury;
+    }
+    ce.population -= cost.population;
+    ce.equipmentStock -= cost.equipmentStock;
 
     const hiringDays = ARMY_RULES.hiring.timeDays;
     const unit: ArmyUnit = {
@@ -1443,42 +1525,22 @@ export class SimEngine {
           this.units.set(defender.unitId, defAfter);
         }
 
-        // record casualties to war if applicable
+        // record casualties to war if applicable — deduplicated (single branch, no shotgun duplication)
         const war = this.findWarForCountries(unit.countryId, defender.countryId);
         if (war) {
-          // casualties attributed to respective sides (handle both directions)
           if (war.attackerId === unit.countryId) {
             war.casualtiesAttacker += result.attackerCasualties;
             war.casualtiesDefender += result.defenderCasualties;
-          } else if (war.attackerId === defender.countryId) {
+          } else {
             war.casualtiesAttacker += result.defenderCasualties;
             war.casualtiesDefender += result.attackerCasualties;
-          } else {
-            // war between A and B but attacker/defender swapped relative to war orientation? Already covered both.
-            // generic: if unit country is attacker side vs defender side
-            // If war is between unit and defender, regardless of who is attacker in war declaration, casualties count per country.
-            // We'll attribute per country id match:
-            if (war.attackerId === unit.countryId) war.casualtiesAttacker += result.attackerCasualties;
-            else if (war.defenderId === unit.countryId) war.casualtiesDefender += result.attackerCasualties;
-            if (war.attackerId === defender.countryId) war.casualtiesAttacker += result.defenderCasualties;
-            else if (war.defenderId === defender.countryId) war.casualtiesDefender += result.defenderCasualties;
           }
           this.computeExhaustionForWar(war);
         }
 
         if (result.winner === "attacker") {
           const prevController = toRegionState.controllerId;
-          toRegionState.controllerId = unit.countryId;
-          this.regionStates.set(toRegionId, toRegionState);
-          // sync T4 maps
-          this.regionController.set(toRegionId, unit.countryId);
-          const oldEco = this.economies.get(prevController);
-          const newEco = this.economies.get(unit.countryId);
-          if (oldEco) {
-            oldEco.controlledRegions.delete(toRegionId);
-            oldEco.lastIncome = computeMonthlyIncome(oldEco, ECONOMY_RULES);
-          }
-          if (newEco) newEco.controlledRegions.add(toRegionId);
+          this.applyRegionControlTransfer(toRegionId, prevController, unit.countryId);
           if (this.units.has(unit.unitId)) {
             const movedAtt = this.units.get(unit.unitId)!;
             movedAtt.regionId = toRegionId;
@@ -1536,16 +1598,7 @@ export class SimEngine {
         return { ok: true };
       } else {
         const prevController = toRegionState.controllerId;
-        toRegionState.controllerId = unit.countryId;
-        this.regionStates.set(toRegionId, toRegionState);
-        this.regionController.set(toRegionId, unit.countryId);
-        const oldEco = this.economies.get(prevController);
-        const newEco = this.economies.get(unit.countryId);
-        if (oldEco) {
-          oldEco.controlledRegions.delete(toRegionId);
-          oldEco.lastIncome = computeMonthlyIncome(oldEco, ECONOMY_RULES);
-        }
-        if (newEco) newEco.controlledRegions.add(toRegionId);
+        this.applyRegionControlTransfer(toRegionId, prevController, unit.countryId);
         unit.regionId = toRegionId;
         this.units.set(unit.unitId, unit);
         this.log.append(this.getDate(), "regionCaptured", { regionId: toRegionId, prevController, newController: unit.countryId, ownerUnchanged: toRegionState.ownerId, via: moveCheck.via }, `захват без боя ${toRegionId} ${prevController}→${unit.countryId} (чья земля: владелец ${toRegionState.ownerId})`);
@@ -1587,7 +1640,7 @@ export class SimEngine {
     const capLost = this.isCapitalLost(countryId);
     const forecast = forecastRegimeChangePure(ps, newRegime, this.getDate(), this.getDaysElapsed(), treasury, atWar, capLost, this.rng);
     if (!forecast.ok) return { ok: false, reason: forecast.unavailableReason ?? forecast.reason };
-    // pay cost
+    // pay cost — single source (economies) + sync (H)
     const cost = forecast.cost.treasury;
     if (eco) {
       if (eco.treasury >= cost) eco.treasury = Math.round((eco.treasury - cost) * 100) / 100;
@@ -1597,9 +1650,11 @@ export class SimEngine {
         eco.debt = Math.round((eco.debt + need) * 100) / 100;
       }
       eco.lastChangeReason = `Смена режима ${ps.regime}→${newRegime}: стоимость ${cost}₥, −${forecast.cost.stabilityPenalty} стабильности`;
+      this.syncTreasuryToCountryEconomy(countryId);
+    } else {
+      const ce = this.countryEconomy.get(countryId);
+      if (ce) ce.treasury -= cost;
     }
-    const ce = this.countryEconomy.get(countryId);
-    if (ce) ce.treasury -= cost;
     // immediate stability hit
     ps.stability = clampStability(ps.stability - forecast.cost.stabilityPenalty);
     ps.crisisLevel = updateCrisisLevel(ps.stability);
@@ -2010,7 +2065,7 @@ export class SimEngine {
       const day = Number(dateStr.slice(8, 10));
       if (day === 1) {
         this.runMonthlyEconomyTick();
-        // after monthly economy, sync politics support a bit more strongly? Already in daily
+        this.syncAllTreasuries();
       }
       if (this.tickCount === 1 || this.tickCount % 30 === 0) {
         this.log.append(this.getDate(), "dayTick", { daysElapsed: this.getDaysElapsed(), dailyRand });
@@ -2029,14 +2084,33 @@ export class SimEngine {
     }
     for (const unit of this.units.values()) {
       const cost = armyDailyUpkeepCost(unit);
-      const econ = this.countryEconomy.get(unit.countryId);
-      if (!econ) continue;
-      econ.treasury -= cost;
-      if (this.tickCount % 7 === 0) {
-        this.log.append(this.getDate(), "upkeepDeducted", { unitId: unit.unitId, countryId: unit.countryId, cost, treasuryAfter: econ.treasury }, `содержание ${unit.unitId}: -${cost.toFixed(2)}, казна ${econ.treasury.toFixed(2)}`);
+      // Deduct once from authoritative economies (H) — with debt handling to keep treasury bounded (soak)
+      const eco = this.economies.get(unit.countryId);
+      const ce = this.countryEconomy.get(unit.countryId);
+      let after = 0;
+      if (eco) {
+        if (eco.treasury >= cost) {
+          eco.treasury = Math.round((eco.treasury - cost) * 100) / 100;
+        } else {
+          const need = Math.round((cost - eco.treasury) * 100) / 100;
+          eco.treasury = 0;
+          eco.debt = Math.round((eco.debt + need) * 100) / 100;
+        }
+        this.syncTreasuryToCountryEconomy(unit.countryId);
+        after = eco.treasury;
+      } else if (ce) {
+        ce.treasury -= cost;
+        after = ce.treasury;
       }
-      if (econ.treasury < 0 && this.tickCount % 7 === 0) {
-        this.log.append(this.getDate(), "treasuryWarning", { countryId: unit.countryId, treasury: econ.treasury }, `казна ${unit.countryId} отрицательна: ${econ.treasury.toFixed(2)}`);
+      if (this.tickCount % 7 === 0) {
+        this.log.append(this.getDate(), "upkeepDeducted", { unitId: unit.unitId, countryId: unit.countryId, cost, treasuryAfter: after }, `содержание ${unit.unitId}: -${cost.toFixed(2)}, казна ${after.toFixed(2)}`);
+      }
+      if (after < 0 && this.tickCount % 7 === 0) {
+        this.log.append(this.getDate(), "treasuryWarning", { countryId: unit.countryId, treasury: after }, `казна ${unit.countryId} отрицательна: ${after.toFixed(2)}`);
+      }
+      // debt warning for soak visibility
+      if (eco && eco.debt > 500 && this.tickCount % 30 === 0) {
+        // keep bounded, no extra log needed
       }
     }
   }
@@ -2132,10 +2206,7 @@ export class SimEngine {
   }
 
   restoreFromSave(save: SaveV1): void {
-    // calendar
-    const [y, m, d] = save.date.split("-").map(Number);
-    (this.calendar as unknown as { current: Date; _daysElapsed: number }).current = new Date(Date.UTC(y, m - 1, d));
-    (this.calendar as unknown as { _daysElapsed: number })._daysElapsed = save.daysElapsed;
+    this.calendar.restoreState(save.date, save.daysElapsed);
     this.rng.setState(save.rngState);
     this.tickCount = save.tickCount;
     this.customState = { ...save.customState };
@@ -2217,12 +2288,10 @@ export class SimEngine {
     this.trust.clear();
     for (const [k, v] of Object.entries(save.trust)) this.trust.set(k, v);
 
-    this.log.clear();
-    for (const e of save.logTail) this.log.append(e.date, e.kind, e.payload, e.message);
-    if (save.logTail.length > 0) {
-      const maxId = Math.max(...save.logTail.map((e) => e.id));
-      (this.log as unknown as { nextId: number }).nextId = maxId + 1;
-    }
+    this.log.restoreTail(save.logTail as unknown as import("./types.js").SimEvent[]);
+
+    // Ensure single source consistency after load (H)
+    this.syncAllTreasuries();
   }
 
   static fromSave(save: SaveV1): SimEngine {

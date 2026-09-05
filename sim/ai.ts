@@ -67,14 +67,8 @@ export interface AiDecisionLog {
 }
 
 function logAIDecision(sim: SimEngine, decision: AiDecisionLog): void {
-  // use engine's public append method if exists, otherwise fallback to private
-  const anySim = sim as unknown as { log: { append: (date:string, kind:string, payload:unknown, message?:string)=>void }; appendEvent?: (kind:string, payload:unknown, message?:string)=>void };
-  if (anySim.appendEvent) {
-    anySim.appendEvent("aiDecision", decision, `ИИ ${decision.countryId} (${decision.profile}): ${decision.cause} — ${decision.reasons.join("; ")}`);
-  } else if (anySim.log && typeof anySim.log.append === "function") {
-    // access private log via any
-    (sim as unknown as { log: { append: (d:string,k:string,p:unknown,m?:string)=>void } }).log.append(decision.date, "aiDecision", decision, `ИИ ${decision.countryId} (${decision.profile}): ${decision.cause} — ${decision.reasons.join("; ")}`);
-  }
+  // Public seam: engine.appendEvent (no anySim reflective access, fix Mysterious Name)
+  sim.appendEvent("aiDecision", decision, `ИИ ${decision.countryId} (${decision.profile}): ${decision.cause} — ${decision.reasons.join("; ")}`);
 }
 
 /**
@@ -116,8 +110,13 @@ export function runAIStep(
   }
 
   // 1) Priority: not bankrupt — avoid negative treasury / high debt / high interest
-  const treasury = econ ? econ.treasury : (sim.getCountryEconomy(countryId)?.treasury ?? 0);
-  const debt = econ ? econ.debt : 0;
+  // Message Chains fix: use engine.getTreasury/getBalance helpers (no sim.getEconomy(cid)!.treasury chains)
+  const treasury = (sim as unknown as { getTreasury?: (id:string)=>number|undefined }).getTreasury
+    ? (sim as unknown as { getTreasury: (id:string)=>number|undefined }).getTreasury(countryId) ?? 0
+    : (econ ? econ.treasury : (sim.getCountryEconomy(countryId)?.treasury ?? 0));
+  const debt = (sim as unknown as { getDebt?: (id:string)=>number|undefined }).getDebt
+    ? (sim as unknown as { getDebt: (id:string)=>number|undefined }).getDebt(countryId) ?? 0
+    : (econ ? econ.debt : 0);
   const lastIncome = econ ? econ.lastIncome : 0;
   const lastExpense = econ ? econ.lastExpense : 0;
   const balance = lastIncome - lastExpense;
@@ -311,6 +310,48 @@ export function runAIStep(
           logAIDecision(sim, { countryId, profile: profileId, cause: opts?.reason ?? "economyTaxDrift", actions: [...actions], reasons: [...reasons], day, date });
           return { acted, actions, reasons, profile: profileId };
         }
+      }
+    }
+  }
+
+  // 3.5) Deals — reassess wars/peace + threat-aware posture (Stage B placeholder, spec A "сделки")
+  // Minimal implementation: if threatened (threat>20) or at war, re-evaluate peace and tilt weights to growth.
+  // Uses engine.getCountryMilitarySummary (Feature Envy fix) and treasury helpers.
+  {
+    const military = (sim as unknown as { getCountryMilitarySummary?: (id:string)=>{strength:number; treasury:number} }).getCountryMilitarySummary
+      ? (sim as unknown as { getCountryMilitarySummary: (id:string)=>{strength:number; treasury:number} }).getCountryMilitarySummary(countryId)
+      : { strength: totalStrength(units), treasury };
+    const highThreat = threat > 20;
+    const shouldReassessDeals = highThreat || isAtWar;
+    if (shouldReassessDeals && econ) {
+      // threat-aware economy: tilt weights toward infra/edu growth if threatened, reduce defense
+      const curW = econ.weights;
+      if (highThreat && curW.defense > 0.3 && !acted) {
+        const newW = { ...curW, defense: Math.max(0, Math.round((curW.defense - 0.05) * 20) / 20), infra: Math.min(1, Math.round((curW.infra + 0.05) * 20) / 20) };
+        const ok = tryDispatch({ type: "setWeights", payload: { countryId, weights: newW } });
+        if (ok) {
+          reasons.push(`сделки: угроза ${threat.toFixed(0)} — сдвиг к росту (оборона ${curW.defense.toFixed(2)}→${newW.defense.toFixed(2)}, инфра ${curW.infra.toFixed(2)}→${newW.infra.toFixed(2)})`);
+          logAIDecision(sim, { countryId, profile: profileId, cause: opts?.reason ?? "deals", actions: [...actions], reasons: [...reasons], day, date });
+          return { acted, actions, reasons, profile: profileId };
+        }
+      }
+      // re-evaluate peace for any active war (even if not strictly losing by evaluateLosing, deals reassesses)
+      if (isAtWar && !acted) {
+        for (const w of wars) {
+          const proposer = countryId;
+          const forecast = sim.forecastPeace(w.warId, proposer, "white");
+          if (forecast.ok && forecast.aiPreview?.accept) {
+            const ok = tryDispatch({ type: "proposePeace", payload: { warId: w.warId, proposer, type: "white" } });
+            if (ok) {
+              reasons.push(`сделки: переоценка мира по ${w.warId} при угрозе ${threat.toFixed(0)} — просит белый мир`);
+              logAIDecision(sim, { countryId, profile: profileId, cause: opts?.reason ?? "deals", actions: [...actions], reasons: [...reasons], day, date });
+              return { acted, actions, reasons, profile: profileId };
+            }
+          }
+        }
+        if (!acted) reasons.push(`сделки: угроза ${threat.toFixed(0)}, переоценка мира — мир не выгоден/недоступен`);
+      } else if (!isAtWar && highThreat && !acted) {
+        reasons.push(`сделки: высокая угроза ${threat.toFixed(0)} — приоритет рост/оборона, война откладывается`);
       }
     }
   }
