@@ -6,3 +6,4 @@ export * from "./validator.js";
 export * from "./time.js";
 export * from "./engine.js";
 export * from "./scenario.js";
+export * from "./economy.js";

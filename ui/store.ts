@@ -8,6 +8,8 @@ interface GameStore {
   isPaused: boolean;
   accumulator: TimeAccumulator;
   lastDate: string;
+  selectedCountryId: string;
+  setSelectedCountry: (id: string) => void;
   setSpeed: (s: Speed) => void;
   togglePause: () => void;
   tickReal: (deltaSeconds: number) => void;
@@ -25,6 +27,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     isPaused: false,
     accumulator: acc,
     lastDate: sim.getDate(),
+    selectedCountryId: "GB",
     setSpeed: (s) => {
       const st = get();
       if (s === "paused") {
@@ -63,5 +66,6 @@ export const useGameStore = create<GameStore>((set, get) => {
       set({ lastDate: st.sim.getDate() });
       return res;
     },
+    setSelectedCountry: (id) => set({ selectedCountryId: id }),
   };
 });
