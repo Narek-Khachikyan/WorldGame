@@ -46,7 +46,7 @@ export class SeededRng {
   }
 
   setState(state: number): void {
-    this.state = state >>> 0;
+    this.state = state;
   }
 }
 

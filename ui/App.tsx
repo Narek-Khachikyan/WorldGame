@@ -8,6 +8,7 @@ import CountrySelection from "./components/CountrySelection.js";
 import EconomyPanel from "./EconomyPanel.js";
 import ArmyPanel from "./ArmyPanel.js";
 import WarPanel from "./panels/WarPanel.js";
+import SavePanel from "./panels/SavePanel.js";
 import ru from "./locales/ru.json";
 import "./styles/atlas.css";
 
@@ -268,6 +269,9 @@ export default function App() {
 
             {/* T6 WarPanel — war and peace end-to-end */}
             <WarPanel />
+
+            {/* T8 SavePanel — persistence v1 */}
+            <SavePanel />
 
             {/* quick stats debug */}
             <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, background: "#fff", padding: "8px 10px", fontSize: 11, color: "#6b7280", lineHeight: 1.4 }}>

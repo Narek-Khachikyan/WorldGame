@@ -2,6 +2,9 @@ import { create } from "zustand";
 import { createSim, TimeAccumulator, DEFAULT_SPEED, type Speed } from "../sim/index.js";
 import type { SimEngine } from "../sim/engine.js";
 import { loadScenario, type Scenario } from "../sim/scenario.js";
+import { runAIStep, getProfileForCountry } from "../sim/ai.js";
+import { AI_INTERVAL_DAYS } from "../sim/ai.js";
+import { saveGame, loadGame } from "../sim/save.js";
 
 export type MapMode = "political" | "military";
 
@@ -18,6 +21,7 @@ interface GameStore {
   selectedRegionId: string | null;
   playerCountryId: string | null;
   hasStarted: boolean;
+  aiProfiles: Record<string, string>; // overrides
   // T4 compat alias — keeps EconomyPanel contract while preserving T3 nullable model
   setSelectedCountry: (id: string) => void;
   // actions
@@ -31,6 +35,9 @@ interface GameStore {
   setPlayerCountry: (id: string | null) => void;
   startGame: (countryId: string) => void;
   resetSelection: () => void;
+  setAiProfile: (countryId: string, profile: string) => void;
+  loadSim: (newSim: SimEngine) => void;
+  runAIForDay: (daysElapsed: number, reason?: string) => void;
 }
 
 let _prevSpeed: Speed = DEFAULT_SPEED;
@@ -40,6 +47,11 @@ let _scenario: Scenario | null = null;
 function getScenario(): Scenario {
   if (!_scenario) _scenario = loadScenario();
   return _scenario;
+}
+
+function shouldRunAIOnTick(sim: SimEngine, playerCountryId: string | null, daysElapsed: number, reason?: string): boolean {
+  if (reason && reason !== "interval14") return true;
+  return daysElapsed % AI_INTERVAL_DAYS === 0;
 }
 
 export const useGameStore = create<GameStore>((set, get) => {
@@ -58,6 +70,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     selectedRegionId: null,
     playerCountryId: null,
     hasStarted: false,
+    aiProfiles: {},
 
     setSpeed: (s) => {
       const st = get();
@@ -87,15 +100,60 @@ export const useGameStore = create<GameStore>((set, get) => {
       const st = get();
       const days = st.accumulator.advance(deltaSeconds);
       if (days > 0) {
+        const beforeTailLen = st.sim.getEventLog().length;
         st.sim.tick(days);
+        const afterDays = st.sim.getDaysElapsed();
+        // AI every 14 days per country AI-controlled, i.e. all except playerCountryId; also on events war/peace/bankruptcy/elections
+        const tail = st.sim.getEventLog().slice(beforeTailLen);
+        const hasEventTrigger = tail.some((e) => ["warDeclared","peaceAccepted","peaceRejected","peaceProposed","treasuryWarning","crisisWarning","electionResult","bankruptcy","upkeepDeducted"].includes(e.kind)) && (tail.some((e)=> e.kind==="warDeclared"||e.kind==="peaceAccepted"||e.kind==="electionResult"||e.kind==="treasuryWarning"||e.kind==="crisisWarning"));
+        // interval check
+        const shouldInterval = afterDays % AI_INTERVAL_DAYS === 0 || (days >= AI_INTERVAL_DAYS);
+        // If we ticked multiple days, we may have crossed an interval boundary without landing exactly — ensure we run at least once per 14 days crossed
+        const crossedInterval = Math.floor((afterDays)/AI_INTERVAL_DAYS) > Math.floor((afterDays - days)/AI_INTERVAL_DAYS);
+        const needAI = crossedInterval || shouldInterval || hasEventTrigger;
+        if (needAI) {
+          const reason = hasEventTrigger ? "event" : "interval14";
+          const player = st.playerCountryId;
+          for (const cid of st.sim.getCountryIds()) {
+            if (cid === player) continue;
+            const profileOverride = st.aiProfiles[cid] as import("../sim/ai.js").AiProfileId | undefined;
+            try {
+              runAIStep(st.sim, cid, { reason, profileOverride });
+              st.sim.setAiLastRun(cid, afterDays);
+            } catch {/* ignore AI errors */}
+          }
+        }
         set({ lastDate: st.sim.getDate() });
       }
     },
     dispatch: (cmd) => {
       const st = get();
       const res = st.sim.dispatch(cmd);
+      // on war/peace commands, immediately trigger AI for opponents with event reason
+      if (cmd.type === "declareWar" || cmd.type === "proposePeace") {
+        const afterDays = st.sim.getDaysElapsed();
+        for (const cid of st.sim.getCountryIds()) {
+          if (cid === st.playerCountryId) continue;
+          // simple event-driven AI: run one step for affected countries
+          const involved = cmd.type === "declareWar" ? ((cmd.payload as { attacker?:string; defender?:string })?.attacker===cid || (cmd.payload as { defender?:string })?.defender===cid) : true;
+          if (involved || cmd.type==="proposePeace") {
+            try { runAIStep(st.sim, cid, { reason: "event" }); st.sim.setAiLastRun(cid, afterDays); } catch {}
+          }
+        }
+      }
       set({ lastDate: st.sim.getDate() });
       return res;
+    },
+    runAIForDay: (daysElapsed, reason) => {
+      const st = get();
+      const r = reason ?? (shouldRunAIOnTick(st.sim, st.playerCountryId, daysElapsed) ? "interval14" : undefined);
+      if (!r) return;
+      for (const cid of st.sim.getCountryIds()) {
+        if (cid === st.playerCountryId) continue;
+        const profileOverride = st.aiProfiles[cid] as import("../sim/ai.js").AiProfileId | undefined;
+        try { runAIStep(st.sim, cid, { reason: r, profileOverride }); st.sim.setAiLastRun(cid, daysElapsed); } catch {}
+      }
+      set({ lastDate: st.sim.getDate() });
     },
     setMapMode: (m) => set({ mapMode: m }),
     selectCountry: (id) => {
@@ -129,15 +187,19 @@ export const useGameStore = create<GameStore>((set, get) => {
     setPlayerCountry: (id) => {
       if (id === null) {
         set({ playerCountryId: null });
+        const st2 = get();
+        st2.sim.setPlayerCountryId(null);
         return;
       }
       const st = get();
       if (!st.scenario.countries.some((c) => c.countryId === id)) return;
+      st.sim.setPlayerCountryId(id);
       set({ playerCountryId: id });
     },
     startGame: (countryId) => {
       const st = get();
       if (!st.scenario.countries.some((c) => c.countryId === countryId)) return;
+      st.sim.setPlayerCountryId(countryId);
       set({
         playerCountryId: countryId,
         selectedCountryId: countryId,
@@ -146,6 +208,19 @@ export const useGameStore = create<GameStore>((set, get) => {
       });
     },
     resetSelection: () => set({ selectedCountryId: null, selectedRegionId: null }),
+    setAiProfile: (countryId, profile) => {
+      const st = get();
+      if (!["cautious","ambitious"].includes(profile)) return;
+      st.sim.setAiProfile(countryId, profile);
+      set({ aiProfiles: { ...st.aiProfiles, [countryId]: profile } });
+    },
+    loadSim: (newSim) => {
+      const st = get();
+      // preserve player linkage? newSim already has playerCountryId from save, or we keep current
+      // ensure aiProfiles map sync
+      const profiles = newSim.getAllAiProfiles();
+      set({ sim: newSim, lastDate: newSim.getDate(), playerCountryId: newSim.getPlayerCountryId(), aiProfiles: profiles, hasStarted: !!newSim.getPlayerCountryId() });
+    },
     // T4 compat: alias to selectCountry for existing EconomyPanel callers
     setSelectedCountry: (id) => {
       const st = get();
@@ -161,6 +236,11 @@ export const useGameStore = create<GameStore>((set, get) => {
     },
   };
 });
+
+if (typeof window !== "undefined") {
+  (window as unknown as { __GAME_STORE__?: typeof useGameStore }).__GAME_STORE__ = useGameStore;
+  (window as unknown as { __SAVE_FUNCS__?: { saveGame: typeof saveGame; loadGame: typeof loadGame } }).__SAVE_FUNCS__ = { saveGame, loadGame };
+}
 
 /** Selectors for topbar stub data (T4/T5 contracts) */
 export function useTopbarStubs() {
