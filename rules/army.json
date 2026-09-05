@@ -1,8 +1,8 @@
 {
   "_note": "Model coefficients for army A (WB-A T5). Not factual statistics — game balance. Separated from scenario facts in data/. Stage B will add full supply network.",
   "hiring": {
-    "costPerPersonnel": 2,
-    "costPerEquipment": 3,
+    "costPerPersonnel": 0.12,
+    "costPerEquipment": 0.12,
     "timeDays": 14,
     "defaultPersonnel": 1000,
     "defaultEquipment": 0.8,
@@ -17,9 +17,9 @@
     "equipmentStockPerEquipmentUnit": 800
   },
   "upkeep": {
-    "costPerPersonnelPerDay": 0.01,
-    "costPerEquipmentPerDay": 0.15,
-    "note": "Hook for T4 economy: T4 will deduct via defense weight. For standalone T5, SimEngine deducts from treasury directly on tick(). Expose dailyUpkeepCost(unit) for T4."
+    "costPerPersonnelPerDay": 0.00002,
+    "costPerEquipmentPerDay": 0.0003,
+    "note": "Hook for T4 economy: T4 will deduct via defense weight. Unified treasury (economies 800) — scaled ~650× from legacy 20000 to keep hiring/upkeep affordable with single source and pass peaceful debt <1000 over 2y (soak). Deduct once per SimEngine tick."
   },
   "combat": {
     "defenseBonus": 1.25,
@@ -40,7 +40,7 @@
     "supplyPenaltyFactor": 0.7
   },
   "initialCountry": {
-    "treasury": 20000,
+    "treasury": 800,
     "population": 20000,
     "equipmentStock": 20000
   },

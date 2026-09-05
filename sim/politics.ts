@@ -6,6 +6,8 @@
  * low stability = gradual crisis with recovery chance, never instant death.
  * Relations/trust minimal Map<pair,value> + election stance deltas.
  * No hotlinks, portraits local initials only (see ui/LeaderAvatar).
+ * Spec note (finding D): relations/trust are spec's "foreignStance-дельты к отношениям/доверию" — this IS the spec's
+ * relations/trust implementation (50 neutral, stance deltas on election). Not extra. Queries: SimEngine.getRelations/getTrust.
  */
 
 import politicsRulesRaw from "../rules/politics.json";

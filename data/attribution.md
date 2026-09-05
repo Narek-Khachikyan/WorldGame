@@ -12,6 +12,7 @@
 
 - All leader names/titles/since/sources are factual, sourced from Wikipedia (CC BY-SA 4.0) with per-entry `source` field in `data/leaders.json` (e.g. “Wikipedia — Keir Starmer, accessed 2026-09-05”). No scraped photos.
 - Portraits (T7): **not vendored** in slice A (field `portrait: null` for all 16). No non-free portraits are used. UI renders initials avatar via `ui/LeaderAvatar.tsx` (no external images, no hotlinks). Where portraits are added in future, they will be only freely licensed images (Wikimedia Commons, CC BY-SA / CC0) stored locally in `data/portraits/` with per-image source and license in `leaders.json` + this file. No hotlinking. Verified: no portrait files are bundled, `data/leaders.json` all `portrait:null`, `ui/LeaderAvatar.tsx` uses initials only.
+- Runtime guard (fix C): `sim/scenario.ts` validator enforces that if `leader.portrait` is set, it must have `portraitLicense` with free license string (CC0/CC BY/CC BY-SA/public domain) and local path under `data/portraits/`; otherwise validation rejects with clear RU/EN error, and portrait remains `null` keeps passing. UI `LeaderAvatar` stays initials-only.
 - Example per-entry source: `Wikipedia — Emmanuel Macron, accessed 2026-09-05`.
 - Compliance T7: `find data -type f -name '*.jpg' -o -name '*.png' | xargs` yields no portraits; `grep portrait data/leaders.json` shows only null. No network at runtime.
 

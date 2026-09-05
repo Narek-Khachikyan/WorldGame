@@ -1,5 +1,13 @@
 /** Shared sim types — pure TS, no React. Skeleton for T1. */
 
+// Primitive Obsession fix — branded types for IDs + Data Clumps aliases (no runtime cost, validation via helpers)
+export type CountryId = string & { readonly __brand: "CountryId" };
+export type RegionId = string & { readonly __brand: "RegionId" };
+export type TaxRate = number & { readonly __brand: "TaxRate" };
+export type DiplomacyMap = Map<string, number>;
+export type CountryFunds = { treasury: number; population: number; equipmentStock: number };
+export type PoliticalHealth = { stability: number; support: number; warFatigue: number }; // warFatigueLite alias warFatigue
+
 export type GameDateString = string; // YYYY-MM-DD
 
 export interface SimConfig {

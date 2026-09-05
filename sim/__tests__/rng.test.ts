@@ -46,8 +46,19 @@ describe("seeded RNG (mulberry32)", () => {
     expect(rng3.next()).toBe(v1);
   });
 
-  it("seed stored for reproducibility", () => {
-    const rng = new SeededRng(2026);
-    expect(rng.seed).toBe(2026);
+  it("seed 2026 determinism produces same sequence and distinct from other seeds", () => {
+    const a = createRng(2026);
+    const b = createRng(2026);
+    const c = createRng(2027);
+    const seqA = [a.next(), a.next(), a.next()];
+    const seqB = [b.next(), b.next(), b.next()];
+    const seqC = [c.next(), c.next(), c.next()];
+    expect(seqA).toEqual(seqB);
+    expect(seqA).not.toEqual(seqC);
+    // also verify re-creation with same seed yields same first value
+    const rng2 = new SeededRng(2026);
+    const first = rng2.next();
+    const rng3 = new SeededRng(2026);
+    expect(rng3.next()).toBe(first);
   });
 });

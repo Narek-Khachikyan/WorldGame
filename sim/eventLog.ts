@@ -35,6 +35,19 @@ export class EventLog {
     this.nextId = 1;
   }
 
+  /** Restore tail from save — clears and re-appends, restoring nextId. */
+  restoreTail(tail: SimEvent[]): void {
+    this.events = [];
+    this.nextId = 1;
+    for (const e of tail) {
+      this.events.push({ ...e });
+    }
+    if (tail.length > 0) {
+      const maxId = Math.max(...tail.map((e) => e.id));
+      this.nextId = maxId + 1;
+    }
+  }
+
   get size(): number {
     return this.events.length;
   }

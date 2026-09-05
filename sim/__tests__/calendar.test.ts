@@ -37,10 +37,15 @@ describe("calendar", () => {
     expect(cal.getDateString()).toBe("2027-01-01");
   });
 
-  it("addDays helper is pure and correct", () => {
-    expect(addDays("2026-01-01", 0)).toBe("2026-01-01");
+  it("addDays helper advances date deterministically and is pure", () => {
+    expect(addDays("2026-01-01", 30)).toBe("2026-01-31");
+    expect(addDays("2026-01-01", 31)).toBe("2026-02-01");
     expect(addDays("2026-01-01", 365)).toBe("2027-01-01"); // 2026 not leap
     expect(addDays("2026-01-31", 1)).toBe("2026-02-01");
+    // pure: same inputs give same output, original not mutated
+    const orig = "2026-01-01";
+    expect(addDays(orig, 10)).toBe("2026-01-11");
+    expect(orig).toBe("2026-01-01");
     expect(parseGameDate("2026-01-01").getUTCFullYear()).toBe(2026);
     expect(formatGameDate(parseGameDate("2026-06-15"))).toBe("2026-06-15");
   });

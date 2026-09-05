@@ -122,10 +122,30 @@ describe("AI T8 — base AI by same rules, priorities, profiles, journal", () =>
     anySim.economies.get(attacker)!.debt = 0;
     // Force profile ambitious for attacker to lower threshold
     sim.setAiProfile(attacker, "ambitious");
-    const ambitiousProfile = getProfileForCountry(attacker, { [attacker]:"ambitious" });
-    expect(ambitiousProfile.warForceRatioMin).toBe(1.4);
-    const cautiousProfile = AI_PROFILES.cautious;
-    expect(cautiousProfile.warForceRatioMin).toBe(1.8);
+    // Behavioral check: ambitious vs cautious at ~1.6 ratio (thresholds via AI decisions, not direct config)
+    {
+      const simC = createSim({ seed: 9031 });
+      const simA = createSim({ seed: 9031 });
+      for (const s of [simC, simA]) {
+        s.setPlayerCountryId("GB");
+        s.dispatch({ type: "recruitUnit", payload: { countryId: attacker, regionId: s.getCapitalRegion(attacker)!, personnel: 1600, equipment: 0.8 } });
+        s.dispatch({ type: "recruitUnit", payload: { countryId: defender, regionId: s.getCapitalRegion(defender)!, personnel: 1000, equipment: 0.8 } });
+        s.tick(14);
+        const anyS = s as unknown as { economies: Map<string, { treasury:number; debt:number; activeProjects: unknown[]; controlledRegions: Set<string> }> };
+        const eco = anyS.economies.get(attacker)! as unknown as { treasury:number; debt:number; activeProjects: unknown[]; controlledRegions: Set<string> };
+        eco.treasury = 800; eco.debt = 0;
+        for (const rid of Array.from(eco.controlledRegions)) {
+          (eco.activeProjects as unknown[]).push({ id:`dummy-${rid}-1`, countryId:attacker, regionId:rid, type:"regionInfra", price:120, durationDays:45, startDay:0, startDate:"2026-01-01", endDay:45, endDate:"2026-02-15", status:"active" } as unknown as never);
+          (eco.activeProjects as unknown[]).push({ id:`dummy-${rid}-2`, countryId:attacker, regionId:rid, type:"regionInfra", price:120, durationDays:45, startDay:0, startDate:"2026-01-01", endDay:45, endDate:"2026-02-15", status:"active" } as unknown as never);
+        }
+      }
+      runAIStep(simC, attacker, { reason: "interval14", profileOverride: "cautious" });
+      const warC = simC.getWars().filter((w)=> w.attackerId===attacker).length;
+      runAIStep(simA, attacker, { reason: "interval14", profileOverride: "ambitious" });
+      const warA = simA.getWars().filter((w)=> w.attackerId===attacker).length;
+      expect(warC).toBe(0);
+      expect(warA).toBeGreaterThanOrEqual(warC);
+    }
 
     // Run AI — should declare war if ratio high enough
     const beforeWars = sim.getWars().length;

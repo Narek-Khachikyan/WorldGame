@@ -221,19 +221,8 @@ export const useGameStore = create<GameStore>((set, get) => {
       const profiles = newSim.getAllAiProfiles();
       set({ sim: newSim, lastDate: newSim.getDate(), playerCountryId: newSim.getPlayerCountryId(), aiProfiles: profiles, hasStarted: !!newSim.getPlayerCountryId() });
     },
-    // T4 compat: alias to selectCountry for existing EconomyPanel callers
-    setSelectedCountry: (id) => {
-      const st = get();
-      // delegate to selectCountry validation
-      if (!st.scenario.countries.some((c) => c.countryId === id)) return;
-      // reuse logic via direct set to keep T4 simple path
-      let nextRegion = st.selectedRegionId;
-      if (nextRegion) {
-        const reg = st.scenario.regions.find((r) => r.regionId === nextRegion);
-        if (!reg || reg.countryId !== id) nextRegion = null;
-      }
-      set({ selectedCountryId: id, selectedRegionId: nextRegion });
-    },
+    // T4 compat alias — delegate to selectCountry to avoid duplication (fix #2 Middle Man)
+    setSelectedCountry: (id) => get().selectCountry(id),
   };
 });
 
