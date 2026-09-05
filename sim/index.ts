@@ -8,3 +8,4 @@ export * from "./engine.js";
 export * from "./scenario.js";
 export * from "./economy.js";
 export * from "./army.js";
+export * from "./war.js";

@@ -20,6 +20,8 @@ const KNOWN_TYPES = new Set([
   "recruitUnit",
   "moveUnit",
   "setStance",
+  "declareWar",
+  "proposePeace",
 ]);
 
 export function validateCommand(cmd: unknown): ValidationResult {
@@ -181,6 +183,27 @@ export function validateCommand(cmd: unknown): ValidationResult {
     if (!valid.has(p.stance as string)) {
       return { ok: false, reason: `setStance stance must be one of offensive|defensive|entrenched, got ${p.stance}` };
     }
+    return { ok: true };
+  }
+
+  if (c.type === "declareWar") {
+    const p = c.payload as Record<string, unknown> | undefined;
+    if (!p || typeof p !== "object") return { ok: false, reason: "declareWar requires payload {attacker, defender}" };
+    if (typeof p.attacker !== "string" || (p.attacker as string).trim() === "") return { ok: false, reason: "declareWar payload.attacker must be non-empty string" };
+    if (typeof p.defender !== "string" || (p.defender as string).trim() === "") return { ok: false, reason: "declareWar payload.defender must be non-empty string" };
+    // allow optional reason field string
+    if (p.reason !== undefined && typeof p.reason !== "string") return { ok: false, reason: "declareWar payload.reason must be string if present" };
+    return { ok: true };
+  }
+
+  if (c.type === "proposePeace") {
+    const p = c.payload as Record<string, unknown> | undefined;
+    if (!p || typeof p !== "object") return { ok: false, reason: "proposePeace requires payload {warId, proposer, type}" };
+    if (typeof p.warId !== "string" || (p.warId as string).trim() === "") return { ok: false, reason: "proposePeace payload.warId must be non-empty string" };
+    if (typeof p.proposer !== "string" || (p.proposer as string).trim() === "") return { ok: false, reason: "proposePeace payload.proposer must be non-empty string" };
+    if (typeof p.type !== "string" || (p.type as string).trim() === "") return { ok: false, reason: "proposePeace payload.type must be non-empty string" };
+    const allowed = ["white", "annexOccupied", "indemnity"];
+    if (!allowed.includes(p.type as string)) return { ok: false, reason: `proposePeace type must be one of ${allowed.join("|")}, got ${p.type}` };
     return { ok: true };
   }
 
