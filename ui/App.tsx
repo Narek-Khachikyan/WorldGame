@@ -2,15 +2,24 @@ import { useEffect, useRef, useState } from "react";
 import { useGameStore } from "./store.js";
 import TopBar from "./components/TopBar.js";
 import MapCanvas from "./components/MapCanvas.js";
+import GameNav from "./components/GameNav.js";
 import SidePanel from "./components/SidePanel.js";
 import EventLog from "./components/EventLog.js";
 import CountrySelection from "./components/CountrySelection.js";
 import EconomyPanel from "./EconomyPanel.js";
 import ArmyPanel from "./ArmyPanel.js";
 import WarPanel from "./panels/WarPanel.js";
+import PoliticsPanel from "./panels/PoliticsPanel.js";
 import SavePanel from "./panels/SavePanel.js";
-import ru from "./locales/ru.json";
 import "./styles/atlas.css";
+
+const SECTION_TITLES: Record<string, { title: string; sub: string }> = {
+  overview: { title: "Обзор", sub: "контекст карты" },
+  economy: { title: "Экономика", sub: "ваша страна" },
+  army: { title: "Армия", sub: "ваши войска" },
+  politics: { title: "Политика", sub: "ваша страна" },
+  diplomacy: { title: "Дипломатия", sub: "война и мир" },
+};
 
 export default function App() {
   const tickReal = useGameStore((s) => s.tickReal);
@@ -25,14 +34,23 @@ export default function App() {
   const hasStarted = useGameStore((s) => s.hasStarted);
   const startGame = useGameStore((s) => s.startGame);
   const sim = useGameStore((s) => s.sim);
+  const activeSection = useGameStore((s) => s.activeSection);
+  const setActiveSection = useGameStore((s) => s.setActiveSection);
+  const showEventLog = useGameStore((s) => s.showEventLog);
+  const toggleEventLog = useGameStore((s) => s.toggleEventLog);
+  const showMenu = useGameStore((s) => s.showMenu);
+  const setMenuOpen = useGameStore((s) => s.setMenuOpen);
+  const isDevMode = useGameStore((s) => s.isDevMode);
+  useGameStore((s) => s.lastDate);
+  useGameStore((s) => s.stateRev);
 
   const rafRef = useRef<number | null>(null);
   const lastTsRef = useRef<number | null>(null);
-  const [showSelection, setShowSelection] = useState(true);
+  const [sideOpen, setSideOpen] = useState(true);
+  const [confirmRestart, setConfirmRestart] = useState(false);
+  const menuCloseRef = useRef<HTMLButtonElement>(null);
 
-  const t = ru as Record<string, string>;
-
-  // fixed-timestep loop
+  // fixed-timestep loop (store gates time before start)
   useEffect(() => {
     const loop = (ts: number) => {
       if (lastTsRef.current === null) lastTsRef.current = ts;
@@ -48,249 +66,259 @@ export default function App() {
     };
   }, [tickReal]);
 
-  // keyboard: space -> pause
+  // keyboard: Space — пауза в игровом контексте; Esc — закрыть верхнее окно
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.code === "Space" && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
+      const t = e.target as HTMLElement | null;
+      const inField = !!t && (
+        t instanceof HTMLInputElement ||
+        t instanceof HTMLTextAreaElement ||
+        t instanceof HTMLSelectElement ||
+        t.isContentEditable
+      );
+      if (e.code === "Escape") {
+        const st = useGameStore.getState();
+        if (st.showMenu) { st.setMenuOpen(false); setConfirmRestart(false); return; }
+        return;
+      }
+      if (e.code === "Space" && !inField) {
+        // Не перехватываем Space на кнопках/ссылках и пока игра не стартовала или открыто меню.
+        const st = useGameStore.getState();
+        if (!st.hasStarted || st.showMenu) return;
+        if (t instanceof HTMLButtonElement || t instanceof HTMLAnchorElement) return;
         e.preventDefault();
-        useGameStore.getState().togglePause();
+        st.togglePause();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  // when game starts, keep selection visible but collapsible; hide initial full panel after first start?
+  // focus management for menu modal
   useEffect(() => {
-    if (hasStarted) {
-      // auto-collapse selection after 800ms to show map; user can reopen
-      const id = setTimeout(() => setShowSelection(false), 800);
-      return () => clearTimeout(id);
-    } else {
-      setShowSelection(true);
+    if (showMenu) {
+      const id = requestAnimationFrame(() => menuCloseRef.current?.focus());
+      return () => cancelAnimationFrame(id);
     }
-  }, [hasStarted]);
+  }, [showMenu]);
 
-  // economy panel country: prefer selection, else player, else first scenario country
-  const economyCountryId = selectedCountryId ?? playerCountryId ?? scenario.countries[0]?.countryId ?? null;
+  // Живые слои карты из симуляции (владелец/контролёр + армии).
+  let regionStates: Array<{ regionId: string; ownerId: string; controllerId: string }> = [];
+  let units: Array<{ unitId: string; countryId: string; regionId: string; personnel: number; readiness: number }> = [];
+  try {
+    regionStates = sim.getRegionStates().map((r) => ({ regionId: r.regionId, ownerId: r.ownerId, controllerId: r.controllerId }));
+    units = sim.getUnits().map((u) => ({ unitId: u.unitId, countryId: u.countryId, regionId: u.regionId, personnel: u.personnel, readiness: u.readiness }));
+  } catch { /* sim not ready */ }
+
+  const section = SECTION_TITLES[activeSection] ?? SECTION_TITLES.overview;
+  const economyCountryId = playerCountryId ?? scenario.countries[0]?.countryId ?? null;
 
   return (
-    <div style={{ minHeight: "100vh", background: "#fcfcf9", color: "#111827" }}>
-      <div style={{ maxWidth: 1280, margin: "0 auto", padding: "14px 14px 24px", display: "flex", flexDirection: "column", gap: 12 }}>
-        {/* header */}
-        <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
-          <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, letterSpacing: -0.3 }}>{t["app.title"]}</h1>
-          <span style={{ fontSize: 11, color: "#6b7280", background: "#f3f4f6", padding: "2px 8px", borderRadius: 999, border: "1px solid #e5e7eb" }}>
-            PixiJS · Zustand · {scenario.totalCountries} стран · {scenario.totalRegions} регионов · {mapMode === "political" ? "политический" : "военный"} режим
-          </span>
-          <span style={{ fontSize: 11, color: "#6b7280", marginLeft: "auto" }}>{t["app.subtitle"]}</span>
-        </div>
+    <div className="gs-shell" data-testid="gs-shell">
+      <TopBar onOpenMenu={() => setMenuOpen(true)} />
 
-        <TopBar />
+      <div className="gs-main">
+        <GameNav
+          active={activeSection}
+          onChange={setActiveSection}
+          onToggleLog={toggleEventLog}
+          logOpen={showEventLog}
+          onToggleSide={() => setSideOpen((v) => !v)}
+          sideOpen={sideOpen}
+        />
 
-        {/* map mode switch + hint */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            flexWrap: "wrap",
-            background: "#fff",
-            border: "1px solid #d1d5db",
-            borderRadius: 10,
-            padding: "8px 10px",
-          }}
-        >
-          <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: "#6b7280" }}>
-            {t["layout.mapModes"]}
-          </span>
-          <div style={{ display: "flex", gap: 6 }}>
-            <button
-              onClick={() => setMapMode("political")}
-              data-testid="btn-mode-political"
-              style={{
-                padding: "6px 12px",
-                borderRadius: 8,
-                border: mapMode === "political" ? "1px solid #111827" : "1px solid #d1d5db",
-                background: mapMode === "political" ? "#111827" : "#fff",
-                color: mapMode === "political" ? "#fff" : "#111827",
-                fontWeight: mapMode === "political" ? 700 : 500,
-                fontSize: 12,
-                cursor: "pointer",
-              }}
-            >
-              {t["map.modes.political"]}
-            </button>
-            <button
-              onClick={() => setMapMode("military")}
-              data-testid="btn-mode-military"
-              style={{
-                padding: "6px 12px",
-                borderRadius: 8,
-                border: mapMode === "military" ? "1px solid #92400e" : "1px solid #d1d5db",
-                background: mapMode === "military" ? "#92400e" : "#fff",
-                color: mapMode === "military" ? "#fff" : "#111827",
-                fontWeight: mapMode === "military" ? 700 : 500,
-                fontSize: 12,
-                cursor: "pointer",
-              }}
-              title="Военный слой: границы, столица, точки войск/приказов, война/оккупация. Сейчас войск нет — пустое состояние (T5)."
-            >
-              {t["map.modes.military"]}
-            </button>
-          </div>
-
-          <span style={{ fontSize: 11, color: "#6b7280" }}>{t["map.hint"]}</span>
-
-          <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
-            {hasStarted && playerCountryId && (
-              <span style={{ fontSize: 12, color: "#374151" }}>
-                Играете за <strong>{scenario.countries.find((c) => c.countryId === playerCountryId)?.nameRu}</strong>
-              </span>
-            )}
-            <button
-              onClick={() => setShowSelection((v) => !v)}
-              data-testid="btn-toggle-selection"
-              style={{
-                padding: "6px 10px",
-                borderRadius: 8,
-                border: "1px solid #d1d5db",
-                background: "#fff",
-                fontSize: 12,
-                cursor: "pointer",
-              }}
-            >
-              {showSelection ? "Скрыть выбор" : "Выбор страны"}
-            </button>
-          </div>
-        </div>
-
-        {/* country selection — prominent before start, collapsible after */}
-        {showSelection && (
-          <CountrySelection
+        {/* карта — основное рабочее пространство */}
+        <div className="gs-mapwrap">
+          <MapCanvas
             scenario={scenario}
-            onPick={(id) => startGame(id)}
-            onViewOnMap={(id) => {
-              selectCountry(id);
-              // scroll to map
-              document.querySelector('[data-testid="map-canvas"]')?.scrollIntoView({ behavior: "smooth", block: "center" });
-            }}
+            selectedCountryId={selectedCountryId}
+            selectedRegionId={selectedRegionId}
+            mapMode={mapMode}
+            playerCountryId={playerCountryId}
+            regionStates={regionStates}
+            units={units}
+            onSelectCountry={selectCountry}
+            onSelectRegion={selectRegion}
           />
-        )}
 
-        {/* main layout: map + side */}
-        <div style={{ display: "grid", gridTemplateColumns: "1.65fr 0.9fr", gap: 12, alignItems: "start" }}>
-          {/* left column: map + event log + dev helpers */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
-            <div style={{ height: 520, minHeight: 420, display: "flex", flexDirection: "column" }}>
-              <MapCanvas
-                scenario={scenario}
-                selectedCountryId={selectedCountryId}
-                selectedRegionId={selectedRegionId}
-                mapMode={mapMode}
-                playerCountryId={playerCountryId}
-                onSelectCountry={selectCountry}
-                onSelectRegion={selectRegion}
-              />
-            </div>
-
-            {/* selection summary bar */}
-            <div
-              style={{
-                display: "flex",
-                gap: 8,
-                flexWrap: "wrap",
-                alignItems: "center",
-                background: "#fff",
-                border: "1px solid #d1d5db",
-                borderRadius: 10,
-                padding: "8px 10px",
-                fontSize: 12,
-              }}
-            >
-              <span style={{ color: "#6b7280" }}>Выбрано:</span>
-              <span data-testid="selected-country-label" style={{ fontWeight: 700 }}>
-                {selectedCountryId ? scenario.countries.find((c) => c.countryId === selectedCountryId)?.nameRu ?? "—" : "— страна"}
-              </span>
-              <span style={{ color: "#9ca3af" }}>·</span>
-              <span data-testid="selected-region-label" style={{ fontWeight: selectedRegionId ? 700 : 400, color: selectedRegionId ? "#111827" : "#9ca3af" }}>
-                {selectedRegionId ? scenario.regions.find((r) => r.regionId === selectedRegionId)?.nameRu ?? selectedRegionId : "— регион"}
-              </span>
-              <span style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
-                <button
-                  onClick={() => {
-                    selectCountry(null);
-                    // also clears via store
-                  }}
-                  style={{ padding: "4px 8px", borderRadius: 6, border: "1px solid #e5e7eb", background: "#f9fafb", fontSize: 11, cursor: "pointer" }}
-                >
-                  Сбросить выбор
-                </button>
-                <button
-                  onClick={() => {
-                    const r = sim.dispatch({ type: "testPing", payload: { message: "hello T3 map" } });
-                    // force re-render via date bump? dispatch already bumps lastDate
-                    console.log("testPing", r);
-                  }}
-                  title="Проверка валидатора и журнала — кнопка работает, не заглушка"
-                  style={{ padding: "4px 8px", borderRadius: 6, border: "1px solid #d1d5db", background: "#fff", fontSize: 11, cursor: "pointer" }}
-                >
-                  testPing
-                </button>
-              </span>
-            </div>
-
-            <EventLog />
-
-            {/* dev / stub explain */}
-            <div style={{ fontSize: 11, color: "#6b7280", background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 10px", lineHeight: 1.4 }}>
-              <strong>T3 — что видно на карте:</strong> границы (толще между странами, тоньше между регионами), столица ★, точки войск/приказов (сейчас пусто — T5),
-              война/оккупация (штрих, сейчас нет — T6). Зум/пан плавные, геометрия кешируется, перерисовывается только дифф выбора/режима.
-              <br />
-              <span style={{ fontFamily: "monospace", fontSize: 10 }}>map/README.md · PixiJS v7 · без DOM на регион · Graphics cache · diff-only</span>
+          {/* режимы карты поверх карты */}
+          <div className="gs-overlay-tl">
+            <div className="gs-float gs-mode-switch" role="group" aria-label="Режим карты">
+              <button
+                onClick={() => setMapMode("political")}
+                data-testid="btn-mode-political"
+                className="gs-btn small"
+                aria-pressed={mapMode === "political"}
+              >
+                Политический
+              </button>
+              <button
+                onClick={() => setMapMode("military")}
+                data-testid="btn-mode-military"
+                className="gs-btn small"
+                aria-pressed={mapMode === "military"}
+                title="Военный слой: реальные армии и оккупация из симуляции"
+              >
+                Военный
+              </button>
+              {hasStarted && playerCountryId && (
+                <span className="gs-faint" style={{ marginLeft: 4 }}>
+                  Играете за <strong style={{ color: "var(--gs-brass-soft)" }}>{scenario.countries.find((c) => c.countryId === playerCountryId)?.nameRu}</strong>
+                </span>
+              )}
             </div>
           </div>
 
-          {/* right column: side panel + economy + army + debug */}
-          <div style={{ position: "sticky", top: 12, display: "flex", flexDirection: "column", gap: 12 }}>
-            <SidePanel />
-
-            {/* T4 EconomyPanel — union mount per contract */}
-            {economyCountryId ? (
-              <EconomyPanel sim={sim} countryId={economyCountryId} />
-            ) : (
-              <div style={{ border: "1px dashed #d1d5db", borderRadius: 8, padding: 8, fontSize: 11, color: "#6b7280" }}>
-                Выберите страну для экономики
+          {mapMode === "military" && (
+            <div className="gs-overlay-tr">
+              <div className="gs-float" style={{ maxWidth: 220 }}>
+                <strong>Военный слой</strong>
+                <div className="gs-faint" style={{ marginTop: 2 }}>
+                  Кружки — реальные отряды (размер — численность). Красная рамка — оккупирован (контролёр ≠ владелец).
+                </div>
               </div>
-            )}
+            </div>
+          )}
 
-            {/* T5 ArmyPanel — union mount, uses store internally */}
-            <ArmyPanel />
+          {showEventLog && hasStarted && (
+            <div className="gs-overlay-bl">
+              <EventLog compact />
+            </div>
+          )}
 
-            {/* T6 WarPanel — war and peace end-to-end */}
-            <WarPanel />
+          {/* стартовое состояние поверх карты */}
+          {!hasStarted && (
+            <div className="gs-start-veil" role="dialog" aria-modal="true" aria-label="Выбор страны">
+              <div className="gs-start-card">
+                <CountrySelection
+                  scenario={scenario}
+                  onPick={(id) => startGame(id)}
+                  onViewOnMap={(id) => selectCountry(id)}
+                />
+              </div>
+            </div>
+          )}
+        </div>
 
-            {/* T8 SavePanel — persistence v1 */}
-            <SavePanel />
+        {/* контекстная панель — только активный раздел */}
+        {sideOpen && (
+          <aside className="gs-side" aria-label={`Панель: ${section.title}`} data-collapsed="false">
+            <div className="gs-side-head">
+              <h2>{section.title}</h2>
+              <span className="sub">{section.sub}</span>
+              {selectedCountryId && activeSection === "overview" && (
+                <button
+                  className="gs-btn small ghost"
+                  style={{ marginLeft: "auto" }}
+                  onClick={() => { selectCountry(null); }}
+                  title="Сбросить выбор страны/региона"
+                >
+                  Сбросить
+                </button>
+              )}
+            </div>
+            <div className="gs-side-body">
+              {activeSection === "overview" && <SidePanel onGotoDiplomacy={() => setActiveSection("diplomacy")} />}
+              {activeSection === "economy" && (
+                economyCountryId ? (
+                  <>
+                    {selectedCountryId && selectedCountryId !== economyCountryId && (
+                      <div className="gs-card"><span className="gs-muted">Просмотр {selectedCountryId} не меняет экономику: ниже — ваша страна ({economyCountryId}).</span></div>
+                    )}
+                    <EconomyPanel sim={sim} countryId={economyCountryId} />
+                  </>
+                ) : <div className="gs-card">Выберите страну для экономики</div>
+              )}
+              {activeSection === "army" && <ArmyPanel playerCountryId={playerCountryId} />}
+              {activeSection === "politics" && (
+                economyCountryId ? <PoliticsPanel countryId={economyCountryId} /> : <div className="gs-card">Нет данных политики</div>
+              )}
+              {activeSection === "diplomacy" && <WarPanel playerCountryId={playerCountryId} selectedCountryId={selectedCountryId} />}
 
-            {/* quick stats debug */}
-            <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, background: "#fff", padding: "8px 10px", fontSize: 11, color: "#6b7280", lineHeight: 1.4 }}>
-              <strong>Сценарий:</strong> {scenario.scenarioId} v{scenario.version} · {scenario.nameRu}
-              <br />
-              Natural Earth 5.1.0 · 60–120 регионов · факт: {scenario.disputedTerritoriesNote.slice(0, 80)}…
-              <br />
-              Календарь с {scenario.startDate} · выборы каждые {scenario.electionIntervalYears} лет · seed {sim.getSeed()}
-              <br />
-              <span style={{ fontFamily: "monospace", fontSize: 10 }}>T1 ядро времени · T2 сценарий · T3 карта — все в одном бранче feat/spec-1-slice-A</span>
+              {isDevMode && (
+                <div className="gs-card">
+                  <h3>DEV · техническое</h3>
+                  <div className="gs-faint">seed {sim.getSeed()} · {sim.getDaysElapsed()} дн · тиков {sim.getTickCount()} · {scenario.scenarioId} v{scenario.version}</div>
+                  <div className="gs-row" style={{ marginTop: 6 }}>
+                    <button
+                      className="gs-btn small"
+                      onClick={() => {
+                        const r = sim.dispatch({ type: "testPing", payload: { message: "hello map" } });
+                        console.log("testPing", r);
+                      }}
+                      title="Проверка валидатора и журнала"
+                    >
+                      testPing
+                    </button>
+                    <button className="gs-btn small ghost" onClick={() => { selectCountry(null); selectRegion(null); }}>
+                      Сбросить выбор
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </aside>
+        )}
+      </div>
+
+      {/* игровое меню: сохранения + новая игра */}
+      {showMenu && (
+        <div className="gs-modal-veil" onClick={() => { setMenuOpen(false); setConfirmRestart(false); }}>
+          <div
+            className="gs-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Игровое меню"
+            data-testid="game-menu"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="gs-row" style={{ justifyContent: "space-between" }}>
+              <h2 style={{ margin: 0, fontSize: 15 }}>Меню</h2>
+              <button ref={menuCloseRef} className="gs-btn small" onClick={() => { setMenuOpen(false); setConfirmRestart(false); }} data-testid="btn-menu-close">
+                Закрыть (Esc)
+              </button>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 10 }}>
+              <SavePanel />
+              <div className="gs-card">
+                <h3>Новая игра</h3>
+                {!confirmRestart ? (
+                  <>
+                    <div className="gs-muted">Начать заново поверх текущей партии.</div>
+                    <div style={{ marginTop: 8 }}>
+                      <button className="gs-btn" onClick={() => setConfirmRestart(true)} data-testid="btn-new-game">
+                        Новая игра…
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="gs-muted">Текущая партия будет потеряна, если не сохранена. Продолжить?</div>
+                    <div className="gs-row" style={{ marginTop: 8 }}>
+                      <button
+                        className="gs-btn primary"
+                        data-testid="btn-new-game-confirm"
+                        onClick={() => {
+                          // Возврат к выбору страны без затирания сима до явного старта.
+                          useGameStore.setState({ hasStarted: false, playerCountryId: null, selectedCountryId: null, selectedRegionId: null, activeSection: "overview" });
+                          try { sim.setPlayerCountryId(null); } catch { /* noop */ }
+                          setConfirmRestart(false);
+                          setMenuOpen(false);
+                        }}
+                      >
+                        Да, к выбору страны
+                      </button>
+                      <button className="gs-btn ghost" onClick={() => setConfirmRestart(false)}>
+                        Отмена
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>
-
-        {/* footer */}
-        <div style={{ fontSize: 11, color: "#9ca3af", textAlign: "center", padding: "8px 0" }}>
-          Стиль — сдержанный политический атлас · Русский язык · Тексты в <code>ui/locales/ru.json</code> · Нет кнопок-заглушек — всё кликабельное работает или явно отключено с объяснением.
-        </div>
-      </div>
+      )}
     </div>
   );
 }

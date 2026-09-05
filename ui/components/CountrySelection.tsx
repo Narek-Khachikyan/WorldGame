@@ -49,16 +49,17 @@ export default function CountrySelection({ scenario, onPick, onViewOnMap }: Prop
     <div
       data-testid="country-selection"
       style={{
-        border: "1px solid #d1d5db",
+        border: "1px solid var(--gs-line)",
         borderRadius: 12,
-        background: "#ffffff",
+        background: "var(--gs-panel)",
         overflow: "hidden",
-        boxShadow: "0 4px 24px rgba(0,0,0,0.08)",
+        color: "var(--gs-ink)",
+        boxShadow: "none",
       }}
     >
-      <div style={{ padding: "14px 16px", borderBottom: "1px solid #e5e7eb", background: "linear-gradient(180deg,#f9fafb 0%, #ffffff 100%)" }}>
+      <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--gs-line)", background: "rgba(0,0,0,0.18)" }}>
         <h2 style={{ margin: 0, fontSize: 16 }}>{t["selection.title"] ?? "Выберите страну — Европа-16"}</h2>
-        <p style={{ margin: "6px 0 0", fontSize: 12, color: "#6b7280", lineHeight: 1.4 }}>
+        <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--gs-ink-dim)", lineHeight: 1.4 }}>
           {t["selection.subtitle"] ??
             "Срез A: 16 стран, 64 региона. Каждая — своя позиция, сильные стороны и риски. Решение влияет на всю партию."}
         </p>
@@ -66,7 +67,7 @@ export default function CountrySelection({ scenario, onPick, onViewOnMap }: Prop
 
       <div style={{ display: "grid", gridTemplateColumns: "1.55fr 0.95fr", gap: 0, minHeight: 420 }}>
         {/* grid */}
-        <div style={{ padding: 12, borderRight: "1px solid #e5e7eb", background: "#fcfcf9" }}>
+        <div style={{ padding: 12, borderRight: "1px solid var(--gs-line)", background: "transparent" }}>
           <div
             style={{
               display: "grid",
@@ -87,9 +88,9 @@ export default function CountrySelection({ scenario, onPick, onViewOnMap }: Prop
                   data-testid={`country-card-${c.countryId}`}
                   style={{
                     textAlign: "left",
-                    border: isSel ? "2px solid #111827" : "1px solid #e5e7eb",
-                    background: isSel ? "#111827" : "#ffffff",
-                    color: isSel ? "#fff" : "#111827",
+                    border: isSel ? "2px solid var(--gs-brass)" : "1px solid var(--gs-line)",
+                    background: isSel ? "var(--gs-panel-2)" : "rgba(255,255,255,0.03)",
+                    color: "var(--gs-ink)",
                     borderRadius: 10,
                     padding: 10,
                     cursor: "pointer",
@@ -99,7 +100,7 @@ export default function CountrySelection({ scenario, onPick, onViewOnMap }: Prop
                     minHeight: 96,
                     position: "relative",
                     overflow: "hidden",
-                    boxShadow: isSel ? "0 4px 12px rgba(0,0,0,0.18)" : "0 1px 2px rgba(0,0,0,0.04)",
+                    boxShadow: "none",
                   }}
                 >
                   <div
@@ -126,8 +127,8 @@ export default function CountrySelection({ scenario, onPick, onViewOnMap }: Prop
                         bottom: 6,
                         right: 8,
                         fontSize: 10,
-                        background: "#fff",
-                        color: "#111827",
+                        background: "var(--gs-brass)",
+                        color: "#1a1405",
                         padding: "2px 6px",
                         borderRadius: 999,
                         fontWeight: 700,
@@ -142,21 +143,21 @@ export default function CountrySelection({ scenario, onPick, onViewOnMap }: Prop
           </div>
 
           <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 11, color: "#6b7280", background: "#f3f4f6", padding: "4px 8px", borderRadius: 999 }}>
+            <span style={{ fontSize: 11, color: "var(--gs-ink-dim)", background: "rgba(255,255,255,0.05)", padding: "4px 8px", borderRadius: 999 }}>
               Всего 16 · 64 региона · старт 01.01.2026
             </span>
-            <span style={{ fontSize: 11, color: "#6b7280", background: "#f3f4f6", padding: "4px 8px", borderRadius: 999 }}>
+            <span style={{ fontSize: 11, color: "var(--gs-ink-dim)", background: "rgba(255,255,255,0.05)", padding: "4px 8px", borderRadius: 999 }}>
               Дата выборов своя у каждой страны (месяц/день)
             </span>
           </div>
         </div>
 
         {/* detail */}
-        <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12, background: "#fff" }}>
+        <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12, background: "transparent" }}>
           {!selectedCountry || !profile ? (
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, color: "#6b7280", textAlign: "center", padding: 16 }}>
-              <div style={{ width: 56, height: 56, borderRadius: 12, background: "#f3f4f6", border: "1px dashed #d1d5db", display: "grid", placeItems: "center", fontSize: 22 }}>🗺️</div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>Выберите страну слева</div>
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, color: "var(--gs-ink-dim)", textAlign: "center", padding: 16 }}>
+              <div style={{ width: 56, height: 56, borderRadius: 12, background: "rgba(255,255,255,0.04)", border: "1px dashed var(--gs-line)", display: "grid", placeItems: "center", fontSize: 22 }}>◉</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--gs-ink)" }}>Выберите страну слева</div>
               <div style={{ fontSize: 12, lineHeight: 1.4 }}>Увидите положение на карте, сильные стороны и риски. Все выборы работают — карта интерактивна.</div>
               <div style={{ fontSize: 11, opacity: 0.7 }}>Подсказка: кликните карту, чтобы выбрать напрямую, или карточку здесь.</div>
             </div>
@@ -182,10 +183,10 @@ export default function CountrySelection({ scenario, onPick, onViewOnMap }: Prop
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 800, fontSize: 16 }}>{selectedCountry.nameRu}</div>
-                  <div style={{ fontSize: 12, color: "#6b7280" }}>
+                  <div style={{ fontSize: 12, color: "var(--gs-ink-dim)" }}>
                     {selectedCountry.nameEn} · столица {selectedCountry.capital} · {selectedCountry.island ? "остров" : selectedCountry.landlocked ? "без выхода к морю" : "приморская"}
                   </div>
-                  <div style={{ fontSize: 11, color: "#6b7280", marginTop: 4 }}>
+                  <div style={{ fontSize: 11, color: "var(--gs-ink-dim)", marginTop: 4 }}>
                     Выборы: {String(selectedCountry.electionDay).padStart(2, "0")}.{String(selectedCountry.electionMonth).padStart(2, "0")} каждые 5 лет · следущие:{" "}
                     {(() => {
                       const m = String(selectedCountry.electionMonth).padStart(2, "0");
@@ -197,31 +198,31 @@ export default function CountrySelection({ scenario, onPick, onViewOnMap }: Prop
                 </div>
               </div>
 
-              <div style={{ fontSize: 12, color: "#374151", lineHeight: 1.5, background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 10px" }}>
+              <div style={{ fontSize: 12, color: "var(--gs-ink)", lineHeight: 1.5, background: "rgba(255,255,255,0.03)", border: "1px solid var(--gs-line)", borderRadius: 8, padding: "8px 10px" }}>
                 <strong>Положение:</strong> {profile.position}
               </div>
 
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.6, color: "#065f46", marginBottom: 6 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.6, color: "var(--gs-ok)", marginBottom: 6 }}>
                   Сильные стороны
                 </div>
                 <ul style={{ margin: 0, paddingLeft: 16, display: "flex", flexDirection: "column", gap: 4 }}>
                   {profile.strengths.map((s) => (
                     <li key={s} style={{ fontSize: 12, lineHeight: 1.4 }}>
-                      <span style={{ color: "#065f46" }}>●</span> {s}
+                      <span style={{ color: "var(--gs-ok)" }}>●</span> {s}
                     </li>
                   ))}
                 </ul>
               </div>
 
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.6, color: "#991b1b", marginBottom: 6 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.6, color: "var(--gs-danger)", marginBottom: 6 }}>
                   Риски
                 </div>
                 <ul style={{ margin: 0, paddingLeft: 16, display: "flex", flexDirection: "column", gap: 4 }}>
                   {profile.risks.map((s) => (
                     <li key={s} style={{ fontSize: 12, lineHeight: 1.4 }}>
-                      <span style={{ color: "#991b1b" }}>●</span> {s}
+                      <span style={{ color: "var(--gs-danger)" }}>●</span> {s}
                     </li>
                   ))}
                 </ul>
@@ -235,9 +236,9 @@ export default function CountrySelection({ scenario, onPick, onViewOnMap }: Prop
                     width: "100%",
                     padding: "10px 14px",
                     borderRadius: 10,
-                    border: "1px solid #111827",
-                    background: "#111827",
-                    color: "#fff",
+                    border: "1px solid var(--gs-brass)",
+                    background: "var(--gs-brass)",
+                    color: "#1a1405",
                     fontWeight: 700,
                     fontSize: 14,
                     cursor: "pointer",
@@ -252,9 +253,9 @@ export default function CountrySelection({ scenario, onPick, onViewOnMap }: Prop
                       width: "100%",
                       padding: "8px 12px",
                       borderRadius: 10,
-                      border: "1px solid #d1d5db",
-                      background: "#fff",
-                      color: "#374151",
+                      border: "1px solid var(--gs-line)",
+                      background: "transparent",
+                      color: "var(--gs-ink)",
                       fontWeight: 600,
                       fontSize: 12,
                       cursor: "pointer",
@@ -263,7 +264,7 @@ export default function CountrySelection({ scenario, onPick, onViewOnMap }: Prop
                     Показать на карте
                   </button>
                 )}
-                <div style={{ fontSize: 11, color: "#6b7280", textAlign: "center", lineHeight: 1.3 }}>
+                <div style={{ fontSize: 11, color: "var(--gs-ink-faint)", textAlign: "center", lineHeight: 1.3 }}>
                   Смена страны возможна и после старта — через карту или эту панель.
                 </div>
               </div>
