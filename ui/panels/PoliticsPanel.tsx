@@ -22,6 +22,8 @@ export default function PoliticsPanel({ countryId, sim: simProp }: Props) {
   const storeSim = useGameStore((s) => s.sim);
   const scenario = useGameStore((s) => s.scenario);
   const dispatch = useGameStore((s) => s.dispatch);
+  useGameStore((s) => s.stateRev);
+  useGameStore((s) => s.lastDate);
   const sim = simProp ?? storeSim;
   const [msg, setMsg] = useState<string>("");
   const [pendingRegime, setPendingRegime] = useState<string>("electoralDemocracy");
@@ -79,16 +81,16 @@ export default function PoliticsPanel({ countryId, sim: simProp }: Props) {
   };
 
   const crisisLabel = political.crisisLevel === 2 ? "критический" : political.crisisLevel === 1 ? "предкризис" : "норма";
-  const crisisColor = political.crisisLevel === 2 ? "#fee2e2" : political.crisisLevel === 1 ? "#fef3c7" : "#f0fdf4";
-  const crisisBorder = political.crisisLevel === 2 ? "#fecaca" : political.crisisLevel === 1 ? "#fde68a" : "#bbf7d0";
+  const crisisColor = political.crisisLevel === 2 ? "rgba(224,104,92,0.14)" : political.crisisLevel === 1 ? "rgba(200,164,90,0.14)" : "rgba(127,185,138,0.12)";
+  const crisisBorder = political.crisisLevel === 2 ? "#6e2f28" : political.crisisLevel === 1 ? "var(--gs-brass-dark)" : "#2f5a3c";
 
   return (
-    <div data-testid="politics-panel" style={{ border: "1px solid #ddd", borderRadius: 8, padding: 12, fontSize: 12, background: "#fff" }}>
+    <div data-testid="politics-panel" style={{ border: "1px solid var(--gs-line)", borderRadius: 8, padding: 12, fontSize: 12, background: "rgba(255,255,255,0.025)" }}>
       <h3 style={{ marginTop: 0 }}>{t["politics.title"] ?? "Политика"}</h3>
       <p style={{ fontSize: 11, opacity: 0.7, lineHeight: 1.35 }}>{t["politics.hint"] ?? "4 игровых режима с числами в rules/, лидеры с лицами (инициалы), смена режима как дорогое решение (лаг, кулдаун, запрет при войне/потере столицы), выборы каждые 5 лет в свою дату."}</p>
 
       {/* Current regime + leader */}
-      <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 10, marginBottom: 10, background: "#f9fafb" }}>
+      <div style={{ border: "1px solid var(--gs-line)", borderRadius: 8, padding: 10, marginBottom: 10, background: "rgba(255,255,255,0.03)" }}>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           <LeaderAvatar name={political.leaderId} title={political.leaderTitle} size={42} portrait={null} />
           <div style={{ flex: 1 }}>
@@ -111,7 +113,7 @@ export default function PoliticsPanel({ countryId, sim: simProp }: Props) {
           {political.stability < 30 ? <div style={{ marginTop: 4, color: "#991b1b" }}>{t["politics.crisisHint"] ?? "Крах без предупреждения невозможен — журнал показывает crisisWarning загодя. Низкая стабильность = постепенный дрейф −X/день с шансом восстановления."}</div> : null}
         </div>
         {/* regime effects */}
-        <div style={{ marginTop: 8, fontSize: 11, background: "#fff", border: "1px solid #e5e7eb", borderRadius: 6, padding: 6 }}>
+        <div style={{ marginTop: 8, fontSize: 11, background: "rgba(255,255,255,0.03)", border: "1px solid var(--gs-line)", borderRadius: 6, padding: 6 }}>
           <strong>Эффекты режима ({regimeRu[political.regime]} — игровой ярлык, числа в rules/politics.json):</strong>
           <div style={{ marginTop: 4, lineHeight: 1.4 }}>{(() => { const eff = (political as unknown as { regime:string }).regime; return `Бонус удержания на выборах + удержание, налоговая эффективность, усталость × фактор, конкурентность — модельные коэффициенты, не статистика.`; })()}</div>
           <div style={{ marginTop: 4, opacity: 0.7 }}>ИИ в A режим сам не меняет (фикс).</div>
@@ -119,13 +121,13 @@ export default function PoliticsPanel({ countryId, sim: simProp }: Props) {
       </div>
 
       {/* Elections */}
-      <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 10, marginBottom: 10 }}>
+      <div style={{ border: "1px solid var(--gs-line)", borderRadius: 8, padding: 10, marginBottom: 10, background: "rgba(255,255,255,0.025)" }}>
         <strong style={{ fontSize: 13 }}>Выборы</strong>
         <div style={{ fontSize: 11, marginTop: 6, lineHeight: 1.4 }}>
           Дата: <strong>{String(countryMeta.electionDay).padStart(2, "0")}.{String(countryMeta.electionMonth).padStart(2, "0")}</strong> каждые 5 лет · ближайшие: <strong>{political.nextElectionDate}</strong> {political.lastElectionDate ? `· последние ${political.lastElectionDate}` : ""}
         </div>
         {electionForecast ? (
-          <div style={{ marginTop: 6, fontSize: 11, background: electionForecast.retainP < 0.55 ? "#fef3c7" : "#f0fdf4", border: "1px solid #ddd", borderRadius: 4, padding: 6 }}>
+          <div style={{ marginTop: 6, fontSize: 11, background: electionForecast.retainP < 0.55 ? "rgba(200,164,90,0.12)" : "rgba(127,185,138,0.12)", border: "1px solid var(--gs-line)", borderRadius: 4, padding: 6 }}>
             <div><strong>Прогноз удержания (до бросока RNG):</strong> {(electionForecast.retainP*100).toFixed(1)}% · {electionForecast.breakdown}</div>
             <div style={{ marginTop: 4 }}>Причины: {electionForecast.reasons.join("; ")}</div>
             <div style={{ marginTop: 4, opacity: 0.7 }}>{electionForecast.retainP < 0.55 ? "⚠ риск смены партии высок" : "риск смены умеренный"} · {t["politics.electionHint"] ?? "Исход от поддержки/стабильности/усталости/экономики + seeded RNG + модификатор режима; демократии конкурентны, авторитарные — высокая retain, но провал бьёт по стабильности. Результат с причинами в журнале."}</div>
@@ -138,7 +140,7 @@ export default function PoliticsPanel({ countryId, sim: simProp }: Props) {
       </div>
 
       {/* Regime change */}
-      <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 10, marginBottom: 10 }}>
+      <div style={{ border: "1px solid var(--gs-line)", borderRadius: 8, padding: 10, marginBottom: 10, background: "rgba(255,255,255,0.025)" }}>
         <strong style={{ fontSize: 13 }}>Смена режима</strong>
         <p style={{ fontSize: 11, opacity: 0.7, margin: "4px 0 6px" }}>{t["politics.regimeHint"] ?? "Цена из казны, −стабильность сразу, эффект через 6–12 мес., кулдаун ~2 года, запрет при войне/потере столицы, прогноз до подтверждения."}</p>
         <div style={{ display: "flex", gap: 6, alignItems: "end", flexWrap: "wrap" }}>
@@ -151,7 +153,7 @@ export default function PoliticsPanel({ countryId, sim: simProp }: Props) {
           <button onClick={handleRegime} data-testid="btn-change-regime">Сменить режим</button>
         </div>
         {regimeForecast ? (
-          <div style={{ marginTop: 6, fontSize: 11, background: regimeForecast.ok ? "#e6ffe6" : "#ffe6e6", border: "1px solid #ddd", borderRadius: 4, padding: 6 }}>
+          <div style={{ marginTop: 6, fontSize: 11, background: regimeForecast.ok ? "rgba(127,185,138,0.12)" : "rgba(224,104,92,0.12)", border: "1px solid var(--gs-line)", borderRadius: 4, padding: 6 }}>
             <div><strong>Прогноз до подтверждения:</strong> {regimeForecast.ok ? "доступно" : `недоступно — ${regimeForecast.unavailableReason}`}</div>
             <div>Цена: казна {regimeForecast.cost.treasury}₥, стабильность −{regimeForecast.cost.stabilityPenalty}</div>
             {regimeForecast.ok ? <div>Лаг {regimeForecast.lagDays} дн. → {regimeForecast.effectiveDate} · кулдаун до {regimeForecast.cooldownUntil}</div> : null}
@@ -159,16 +161,16 @@ export default function PoliticsPanel({ countryId, sim: simProp }: Props) {
             <div style={{ marginTop: 4, fontSize: 10, opacity: 0.6 }}>Последствия: {regimeForecast.consequences.join("; ")}</div>
           </div>
         ) : null}
-        {political.pendingRegimeChange ? <div style={{ marginTop: 6, fontSize: 11, background: "#fff7e6", border: "1px solid #ffe0b2", borderRadius: 4, padding: 6 }}>⏳ Ожидается: {political.regime} → {political.pendingRegimeChange.newRegime} вступит {political.pendingRegimeChange.effectiveDate} (день {political.pendingRegimeChange.effectiveDay})</div> : null}
+        {political.pendingRegimeChange ? <div style={{ marginTop: 6, fontSize: 11, background: "rgba(200,164,90,0.12)", border: "1px solid var(--gs-brass-dark)", borderRadius: 4, padding: 6 }}>⏳ Ожидается: {political.regime} → {political.pendingRegimeChange.newRegime} вступит {political.pendingRegimeChange.effectiveDate} (день {political.pendingRegimeChange.effectiveDay})</div> : null}
       </div>
 
       {/* Leader/persona change inside regime */}
-      <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 10, marginBottom: 10 }}>
+      <div style={{ border: "1px solid var(--gs-line)", borderRadius: 8, padding: 10, marginBottom: 10, background: "rgba(255,255,255,0.025)" }}>
         <strong style={{ fontSize: 13 }}>Смена персоны внутри режима</strong>
         <p style={{ fontSize: 11, opacity: 0.7, margin: "4px 0 6px" }}>{t["politics.leaderHint"] ?? "Косметика + малый дрейф поддержки. Пул 1 действующий + 2–3 запасных на страну."} Текущий: <strong>{political.leaderId}</strong> ({political.leaderTitle})</p>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 6 }}>
           {allLeaders.map((name) => (
-            <button key={name} onClick={() => setPendingLeader(name)} style={{ padding: "4px 8px", borderRadius: 6, border: pendingLeader === name ? "2px solid #93c5fd" : "1px solid #e5e7eb", background: pendingLeader === name ? "#eff6ff" : "#fff", fontSize: 12 }}>
+            <button key={name} onClick={() => setPendingLeader(name)} style={{ padding: "4px 8px", borderRadius: 6, border: pendingLeader === name ? "2px solid var(--gs-brass)" : "1px solid var(--gs-line)", background: pendingLeader === name ? "rgba(200,164,90,0.15)" : "transparent", fontSize: 12 }}>
               {name} {name === political.leaderId ? "✓" : ""}
             </button>
           ))}
@@ -181,7 +183,7 @@ export default function PoliticsPanel({ countryId, sim: simProp }: Props) {
           <button onClick={handleLeader} data-testid="btn-change-leader">Сменить лидера</button>
         </div>
         {leaderForecast ? (
-          <div style={{ marginTop: 6, fontSize: 11, background: leaderForecast.ok ? "#f0fdf4" : "#ffe6e6", border: "1px solid #ddd", borderRadius: 4, padding: 6 }}>
+          <div style={{ marginTop: 6, fontSize: 11, background: leaderForecast.ok ? "rgba(127,185,138,0.12)" : "rgba(224,104,92,0.12)", border: "1px solid var(--gs-line)", borderRadius: 4, padding: 6 }}>
             {leaderForecast.ok ? <div>Дрейф поддержки {leaderForecast.supportDrift} · {leaderForecast.reason}</div> : <div>Недоступно: {leaderForecast.unavailableReason}</div>}
           </div>
         ) : null}
@@ -205,10 +207,10 @@ export default function PoliticsPanel({ countryId, sim: simProp }: Props) {
       </div>
 
       {/* Diplomacy stance deltas */}
-      <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 10, marginBottom: 10 }}>
+      <div style={{ border: "1px solid var(--gs-line)", borderRadius: 8, padding: 10, marginBottom: 10, background: "rgba(255,255,255,0.025)" }}>
         <strong style={{ fontSize: 12 }}>Дипломатия / stance-дельты</strong>
         <div style={{ fontSize: 11, opacity: 0.7, marginTop: 4 }}>При смене партии применяются foreignStance дельты (−20…+20) к отношениям/доверию. ИИ переоценит сделки/угрозу.</div>
-        <div style={{ marginTop: 6, fontSize: 11, maxHeight: 120, overflowY: "auto", background: "#f9fafb", border: "1px solid #eee", borderRadius: 4, padding: 6 }}>
+        <div style={{ marginTop: 6, fontSize: 11, maxHeight: 120, overflowY: "auto", background: "rgba(255,255,255,0.03)", border: "1px solid var(--gs-line)", borderRadius: 4, padding: 6 }}>
           {(() => {
             const parties = scenario.parties.filter((p) => p.countryId === countryId);
             const curParty = parties.find((p) => p.partyId === political.partyId);
@@ -222,9 +224,9 @@ export default function PoliticsPanel({ countryId, sim: simProp }: Props) {
         </div>
       </div>
 
-      {msg ? <div style={{ marginTop: 8, fontSize: 12, border: "1px solid #ddd", padding: 6, borderRadius: 4, background: "#fafafa" }}>{msg}</div> : null}
+      {msg ? <div style={{ marginTop: 8, fontSize: 12, border: "1px solid var(--gs-line)", padding: 6, borderRadius: 4, background: "rgba(255,255,255,0.03)" }}>{msg}</div> : null}
 
-      <div style={{ marginTop: 10, fontSize: 11, opacity: 0.7, background: "#fff7e6", border: "1px solid #ffe0b2", borderRadius: 6, padding: 6 }}>
+      <div style={{ marginTop: 10, fontSize: 11, opacity: 0.85, background: "rgba(200,164,90,0.10)", border: "1px solid var(--gs-brass-dark)", borderRadius: 6, padding: 6 }}>
         <strong>Гарантии (A):</strong> ИИ режим не меняет. Крах без предупреждения невозможен — при стабильности &lt;30 журнал даёт crisisWarning заранее, кризис — постепенный дрейф с шансом восстановления, не instant death. Проигрыш выборов игрока = смена лидера/партии + удар по стабильности, но игра продолжается.
       </div>
     </div>

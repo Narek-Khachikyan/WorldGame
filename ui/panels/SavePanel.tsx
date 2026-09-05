@@ -1,11 +1,12 @@
 import { useState, useRef } from "react";
 import { useGameStore } from "../store.js";
-import { saveGame, loadGame, SAVE_VERSION, SAVE_SLOTS } from "../../sim/save.js";
+import { saveGame, loadGame, SAVE_VERSION } from "../../sim/save.js";
 
 export default function SavePanel() {
   const sim = useGameStore((s) => s.sim);
   const loadSim = useGameStore((s) => s.loadSim);
-  const lastDate = useGameStore((s) => s.lastDate);
+  useGameStore((s) => s.lastDate);
+  useGameStore((s) => s.stateRev);
   const [msg, setMsg] = useState<string>("");
   const [err, setErr] = useState<string>("");
   const fileRef = useRef<HTMLInputElement>(null);
@@ -94,19 +95,19 @@ export default function SavePanel() {
   });
 
   return (
-    <div data-testid="save-panel" style={{ border: "1px solid #ddd", borderRadius: 8, padding: 12, background: "#fff" }}>
+    <div data-testid="save-panel" style={{ border: "1px solid var(--gs-line)", borderRadius: 8, padding: 12, background: "rgba(255,255,255,0.025)" }}>
       <h3 style={{ marginTop: 0 }}>Сохранения</h3>
       <p style={{ fontSize: 11, opacity: 0.7, lineHeight: 1.35 }}>
         JSON v{SAVE_VERSION}: version/seed/дата/страны/регионы/армии/выборы/хвост лога (100). Валидация при загрузке — битый/несовместимый сейв = понятная ошибка без краша. Локальные слоты + экспорт/импорт файла.
       </p>
       <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 8 }}>
-        Текущий: <strong>{sim.getDate()}</strong> · seed {sim.getSeed()} · дней {sim.getDaysElapsed()} · тиков {sim.getTickCount()} · слоты {SAVE_SLOTS.join(", ")}
+        Текущий: <strong>{sim.getDate()}</strong> · seed {sim.getSeed()} · дней {sim.getDaysElapsed()} · тиков {sim.getTickCount()}
       </div>
 
       {/* slots */}
       <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
         {[1, 2, 3].map((idx) => (
-          <div key={idx} style={{ display: "flex", gap: 6, alignItems: "center", border: "1px solid #eee", borderRadius: 6, padding: 6, background: "#f9fafb" }}>
+          <div key={idx} style={{ display: "flex", gap: 6, alignItems: "center", border: "1px solid var(--gs-line)", borderRadius: 6, padding: 6, background: "rgba(255,255,255,0.03)" }}>
             <span style={{ minWidth: 56, fontSize: 12, fontWeight: 700 }}>Слот {idx}</span>
             <span style={{ flex: 1, fontSize: 11, opacity: 0.7 }}>{slotInfos[idx - 1].info ?? "— пусто —"}</span>
             <button onClick={() => handleSaveSlot(idx)} data-testid={`btn-save-slot-${idx}`} style={{ padding: "4px 8px", fontSize: 12 }}>
@@ -120,7 +121,7 @@ export default function SavePanel() {
       </div>
 
       {/* export/import */}
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", border: "1px solid #eee", borderRadius: 6, padding: 8, marginBottom: 8 }}>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", border: "1px solid var(--gs-line)", borderRadius: 6, padding: 8, marginBottom: 8 }}>
         <button onClick={handleExport} data-testid="btn-export-save" style={{ padding: "6px 10px", fontSize: 12 }}>
           Экспорт файла
         </button>
@@ -149,8 +150,8 @@ export default function SavePanel() {
         </button>
       </div>
 
-      {msg ? <div data-testid="save-msg" style={{ fontSize: 12, border: "1px solid #bbf7d0", background: "#f0fdf4", padding: 6, borderRadius: 4, marginBottom: 6 }}>{msg}</div> : null}
-      {err ? <div data-testid="save-error" style={{ fontSize: 12, border: "1px solid #fecaca", background: "#fef2f2", padding: 6, borderRadius: 4, color: "#991b1b", whiteSpace: "pre-wrap" }}>{err}</div> : null}
+      {msg ? <div data-testid="save-msg" style={{ fontSize: 12, border: "1px solid #2f5a3c", background: "rgba(127,185,138,0.12)", padding: 6, borderRadius: 4, marginBottom: 6 }}>{msg}</div> : null}
+      {err ? <div data-testid="save-error" style={{ fontSize: 12, border: "1px solid #6e2f28", background: "rgba(224,104,92,0.12)", padding: 6, borderRadius: 4, color: "#f2a49c", whiteSpace: "pre-wrap" }}>{err}</div> : null}
 
       <div style={{ fontSize: 11, opacity: 0.6, marginTop: 6, lineHeight: 1.3 }}>
         Проверка: битый JSON или несовместимая версия (≠{SAVE_VERSION}) даёт понятную ошибку без краша. Состояние сохраняется полностью — повторная загрузка детерминирована.

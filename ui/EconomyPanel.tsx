@@ -14,8 +14,8 @@
  *   sim.getRegionController(regionId)     -> string
  *   sim.getEventLogTail(n)                -> для "что изменилось и почему" (taxChanged/weightsChanged/projectStarted/completed/monthlyTick)
  * - Commands dispatched (via validator whitelist + eventLog reasons):
- *   sim.dispatch({ type: "setTax", payload: { countryId, taxRate } })
- *   sim.dispatch({ type: "setWeights", payload: { countryId, weights: {defense,infra,social,edu} } })
+ *   dispatch({ type: "setTax", payload: { countryId, taxRate } })
+ *   dispatch({ type: "setWeights", payload: { countryId, weights: {defense,infra,social,edu} } })
  *   sim.dispatch({ type: "startProject", payload: { countryId, regionId, projectType } })
  *   sim.dispatch({ type: "setRegionController", payload: { regionId, newControllerId } }) — for war/occupation (loss test)
  * - Panel is pure view over sim; sim is source of truth, panel never mutates state directly.
@@ -27,10 +27,11 @@
  * Primary is sim+panel logic; UI may be minimal but must show forecast before confirm.
  */
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import type { SimEngine } from "../sim/engine.js";
 import type { ProjectType, ExpenseWeights } from "../sim/economy.js";
 import { ECONOMY_RULES } from "../sim/economy.js";
+import { useGameStore } from "./store.js";
 
 interface Props {
   sim: SimEngine;
@@ -40,16 +41,25 @@ interface Props {
 const PROJECT_TYPES: ProjectType[] = ["industrialComplex", "powerUnit", "regionInfra"];
 
 export default function EconomyPanel({ sim, countryId }: Props) {
+  // Реактивность: перерендер после каждого тика и каждой команды, даже если дата не изменилась.
+  useGameStore((s) => s.stateRev);
+  useGameStore((s) => s.lastDate);
+  const dispatch = useGameStore((s) => s.dispatch);
   const eco = sim.getEconomy(countryId);
   const [taxDraft, setTaxDraft] = useState<number | null>(null);
   const [weightsDraft, setWeightsDraft] = useState<ExpenseWeights | null>(null);
-  const [selectedRegion, setSelectedRegion] = useState<string>(() => {
-    const e = sim.getEconomy(countryId);
-    // first controlled region or first known
-    if (e && e.controlledRegions.size > 0) return Array.from(e.controlledRegions)[0];
-    return `${countryId}-1`;
-  });
+  const [selectedRegion, setSelectedRegion] = useState<string>(`${countryId}-1`);
   const [selectedType, setSelectedType] = useState<ProjectType>("industrialComplex");
+
+  // При смене страны сбрасываем черновики и регион по умолчанию.
+  useEffect(() => {
+    setTaxDraft(null);
+    setWeightsDraft(null);
+    const e = sim.getEconomy(countryId);
+    if (e && e.controlledRegions.size > 0) setSelectedRegion(Array.from(e.controlledRegions)[0]);
+    else setSelectedRegion(`${countryId}-1`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [countryId]);
 
   if (!eco) return <div>Неизвестная страна {countryId}</div>;
 
@@ -82,21 +92,21 @@ export default function EconomyPanel({ sim, countryId }: Props) {
   const balance = eco.lastIncome - eco.lastExpense;
 
   return (
-    <div style={{ border: "1px solid #ccc", borderRadius: 8, padding: 12, fontSize: 13 }}>
+    <div data-testid="economy-panel" style={{ border: "1px solid var(--gs-line)", borderRadius: 8, padding: 12, fontSize: 13, background: "rgba(255,255,255,0.025)" }}>
       <h3 style={{ margin: "0 0 8px 0" }}>Экономика — {countryId}</h3>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
-        <div><strong>Казна:</strong> {eco.treasury.toFixed(2)} {eco.debt > 0 ? <span style={{ color: "crimson" }}>(долг {eco.debt.toFixed(2)})</span> : null}</div>
+        <div><strong>Казна:</strong> {eco.treasury.toFixed(2)} {eco.debt > 0 ? <span style={{ color: "#f2a49c" }}>(долг {eco.debt.toFixed(2)})</span> : null}</div>
         <div><strong>ВВП (мес.):</strong> {eco.gdp.toFixed(2)} <span style={{ opacity: 0.6, fontSize: 11 }}>(не кошелёк)</span></div>
         <div><strong>Доход:</strong> {eco.lastIncome.toFixed(2)}</div>
         <div><strong>Расход:</strong> {eco.lastExpense.toFixed(2)} <span style={{ opacity: 0.6 }}>(проценты {eco.lastInterest.toFixed(2)})</span></div>
-        <div><strong>Баланс:</strong> <span style={{ color: balance >= 0 ? "green" : "crimson" }}>{balance.toFixed(2)}</span></div>
+        <div><strong>Баланс:</strong> <span style={{ color: balance >= 0 ? "var(--gs-ok)" : "var(--gs-danger)" }}>{balance.toFixed(2)}</span></div>
         <div><strong>Рост:</strong> {(eco.lastGrowthRate * 100).toFixed(2)}% /мес.</div>
         <div><strong>Поддержка:</strong> {eco.lastSupport.toFixed(1)}</div>
         <div style={{ fontSize: 11, opacity: 0.7, gridColumn: "1 / -1" }}>ВВП — не кошелёк; казна меняется только через доход/расход/долг. Потеря промрегиона бьёт по доходу.</div>
       </div>
 
       {/* Налог */}
-      <div style={{ borderTop: "1px solid #eee", paddingTop: 8, marginTop: 8 }}>
+      <div style={{ borderTop: "1px solid var(--gs-line)", paddingTop: 8, marginTop: 8 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <strong>Налог</strong>
           <span>{(taxValue * 100).toFixed(0)}%</span>
@@ -112,21 +122,21 @@ export default function EconomyPanel({ sim, countryId }: Props) {
           style={{ width: "100%" }}
         />
         {taxForecast ? (
-          <div style={{ background: "#f7f7ff", border: "1px solid #ddd", borderRadius: 6, padding: 6, marginTop: 4 }}>
+          <div style={{ background: "rgba(147,197,253,0.10)", border: "1px solid #37507a", borderRadius: 6, padding: 6, marginTop: 4 }}>
             <div style={{ fontWeight: 600 }}>Прогноз до подтверждения:</div>
             <div>Доход {taxForecast.currentIncome.toFixed(2)} → {taxForecast.forecastIncome.toFixed(2)} ({taxForecast.incomeDelta >= 0 ? "+" : ""}{taxForecast.incomeDelta.toFixed(2)})</div>
             <div>Рост {(taxForecast.currentGrowthRate * 100).toFixed(2)}% → {(taxForecast.forecastGrowthRate * 100).toFixed(2)}%</div>
             <div>Поддержка {taxForecast.currentSupport.toFixed(1)} → {taxForecast.forecastSupport.toFixed(1)}</div>
             <div style={{ fontSize: 11, opacity: 0.8, marginTop: 4 }}>{taxForecast.reason}</div>
             <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
-              <button onClick={() => { sim.dispatch({ type: "setTax", payload: { countryId, taxRate: taxValue } }); setTaxDraft(null); }}>Подтвердить</button>
+              <button onClick={() => { dispatch({ type: "setTax", payload: { countryId, taxRate: taxValue } }); setTaxDraft(null); }}>Подтвердить</button>
               <button onClick={() => setTaxDraft(null)}>Отмена</button>
             </div>
           </div>
         ) : (
           taxDraft !== null && taxDraft !== eco.taxRate ? (
             <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-              <button onClick={() => { sim.dispatch({ type: "setTax", payload: { countryId, taxRate: taxValue } }); setTaxDraft(null); }}>Подтвердить</button>
+              <button onClick={() => { dispatch({ type: "setTax", payload: { countryId, taxRate: taxValue } }); setTaxDraft(null); }}>Подтвердить</button>
               <button onClick={() => setTaxDraft(null)}>Отмена</button>
             </div>
           ) : null
@@ -134,7 +144,7 @@ export default function EconomyPanel({ sim, countryId }: Props) {
       </div>
 
       {/* Веса */}
-      <div style={{ borderTop: "1px solid #eee", paddingTop: 8, marginTop: 8 }}>
+      <div style={{ borderTop: "1px solid var(--gs-line)", paddingTop: 8, marginTop: 8 }}>
         <strong>Веса расходов</strong>
         <div style={{ fontSize: 11, opacity: 0.7 }}>Оборона / Инфра / Соц / Наука (лаг ~6 мес.)</div>
         {(["defense", "infra", "social", "edu"] as const).map((cat) => {
@@ -156,27 +166,27 @@ export default function EconomyPanel({ sim, countryId }: Props) {
           );
         })}
         {weightsForecast ? (
-          <div style={{ background: "#fff7e6", border: "1px solid #ddd", borderRadius: 6, padding: 6, marginTop: 6 }}>
+          <div style={{ background: "rgba(200,164,90,0.12)", border: "1px solid var(--gs-brass-dark)", borderRadius: 6, padding: 6, marginTop: 6 }}>
             <div style={{ fontWeight: 600 }}>Прогноз до подтверждения:</div>
             <div>Расход {weightsForecast.currentExpense.toFixed(2)} → {weightsForecast.forecastExpense.toFixed(2)} ({weightsForecast.expenseDelta >= 0 ? "+" : ""}{weightsForecast.expenseDelta.toFixed(2)})</div>
             <div>Рост {(weightsForecast.currentGrowthRate * 100).toFixed(2)}% → {(weightsForecast.forecastGrowthRate * 100).toFixed(2)}%</div>
             <div>Поддержка {weightsForecast.currentSupport.toFixed(1)} → {weightsForecast.forecastSupport.toFixed(1)}</div>
             <div style={{ fontSize: 11, opacity: 0.8, marginTop: 4 }}>{weightsForecast.reason}</div>
             <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
-              <button onClick={() => { sim.dispatch({ type: "setWeights", payload: { countryId, weights: weightsValue } }); setWeightsDraft(null); }}>Подтвердить</button>
+              <button onClick={() => { dispatch({ type: "setWeights", payload: { countryId, weights: weightsValue } }); setWeightsDraft(null); }}>Подтвердить</button>
               <button onClick={() => setWeightsDraft(null)}>Отмена</button>
             </div>
           </div>
         ) : weightsDraft ? (
           <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
-            <button onClick={() => { sim.dispatch({ type: "setWeights", payload: { countryId, weights: weightsValue } }); setWeightsDraft(null); }}>Подтвердить</button>
+            <button onClick={() => { dispatch({ type: "setWeights", payload: { countryId, weights: weightsValue } }); setWeightsDraft(null); }}>Подтвердить</button>
             <button onClick={() => setWeightsDraft(null)}>Отмена</button>
           </div>
         ) : null}
       </div>
 
       {/* Стройки */}
-      <div style={{ borderTop: "1px solid #eee", paddingTop: 8, marginTop: 8 }}>
+      <div style={{ borderTop: "1px solid var(--gs-line)", paddingTop: 8, marginTop: 8 }}>
         <strong>Стройки (3 типа, слоты на регион — {ECONOMY_RULES.projects.industrialComplex.slotLimitPerRegion})</strong>
         <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
           <select value={selectedRegion} onChange={(e) => setSelectedRegion(e.target.value)} style={{ flex: 1, minWidth: 120 }}>
@@ -196,19 +206,19 @@ export default function EconomyPanel({ sim, countryId }: Props) {
         </div>
 
         {projectForecast ? (
-          <div style={{ border: "1px solid #ddd", borderRadius: 6, padding: 6, marginTop: 6, background: projectForecast.unavailableReason ? "#ffe6e6" : "#e6ffe6" }}>
+          <div style={{ border: "1px solid var(--gs-line)", borderRadius: 6, padding: 6, marginTop: 6, background: projectForecast.unavailableReason ? "rgba(224,104,92,0.12)" : "rgba(127,185,138,0.12)" }}>
             <div style={{ fontWeight: 600 }}>Прогноз до подтверждения:</div>
             <div>Стоимость: {projectForecast.cost}₥, срок: {projectForecast.durationDays} дн., слоты: {eco.activeProjects.filter((p)=>p.regionId===selectedRegion).length + eco.completedProjects.filter((p)=>p.regionId===selectedRegion).length}/{projectForecast.slotLimitPerRegion} занято</div>
             <div>Доход {projectForecast.currentIncome.toFixed(2)} → {projectForecast.forecastIncome.toFixed(2)} ({projectForecast.incomeDelta >= 0 ? "+" : ""}{projectForecast.incomeDelta.toFixed(2)})</div>
             <div>Выгоды: {projectForecast.benefits.join("; ")}</div>
             <div>Риски: {projectForecast.risks.join("; ")}</div>
             {projectForecast.unavailableReason ? (
-              <div style={{ color: "crimson", marginTop: 4 }}><strong>Недоступно:</strong> {projectForecast.unavailableReason}</div>
+              <div style={{ color: "#f2a49c", marginTop: 4 }}><strong>Недоступно:</strong> {projectForecast.unavailableReason}</div>
             ) : (
               <div style={{ marginTop: 6 }}>
                 <button
                   onClick={() => {
-                    const res = sim.dispatch({ type: "startProject", payload: { countryId, regionId: selectedRegion, projectType: selectedType } });
+                    const res = dispatch({ type: "startProject", payload: { countryId, regionId: selectedRegion, projectType: selectedType } });
                     console.log("startProject", res);
                   }}
                   disabled={!!projectForecast.unavailableReason}
@@ -228,12 +238,12 @@ export default function EconomyPanel({ sim, countryId }: Props) {
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 4 }}>
               {eco.activeProjects.map((p) => (
-                <div key={p.id} style={{ border: "1px solid #eee", padding: 4, borderRadius: 4, fontSize: 12 }}>
+                <div key={p.id} style={{ border: "1px solid var(--gs-line)", padding: 4, borderRadius: 4, fontSize: 12 }}>
                   <strong>{ECONOMY_RULES.projects[p.type as ProjectType]?.nameRu ?? p.type}</strong> в {p.regionId} — активен до {p.endDate} (осталось {p.endDay - sim.getDaysElapsed()} дн.)
                 </div>
               ))}
               {eco.completedProjects.map((p) => (
-                <div key={p.id} style={{ border: "1px solid #d6ffd6", padding: 4, borderRadius: 4, fontSize: 12, background: "#f0fff0" }}>
+                <div key={p.id} style={{ border: "1px solid #2f5a3c", padding: 4, borderRadius: 4, fontSize: 12, background: "rgba(127,185,138,0.12)" }}>
                   <strong>{ECONOMY_RULES.projects[p.type as ProjectType]?.nameRu ?? p.type}</strong> в {p.regionId} — завершён {p.endDate}
                 </div>
               ))}
@@ -243,7 +253,7 @@ export default function EconomyPanel({ sim, countryId }: Props) {
       </div>
 
       {/* Что изменилось и почему */}
-      <div style={{ borderTop: "1px solid #eee", paddingTop: 8, marginTop: 8 }}>
+      <div style={{ borderTop: "1px solid var(--gs-line)", paddingTop: 8, marginTop: 8 }}>
         <strong>Что изменилось и почему</strong>
         <div style={{ fontSize: 11, opacity: 0.7 }}>Последние эконом-события с причинами</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 6, maxHeight: 160, overflowY: "auto" }}>
@@ -255,7 +265,7 @@ export default function EconomyPanel({ sim, countryId }: Props) {
           ))}
         </div>
         {eco.lastChangeReason ? (
-          <div style={{ marginTop: 6, fontSize: 11, background: "#f0f0ff", border: "1px solid #ddd", borderRadius: 4, padding: 4 }}>
+          <div style={{ marginTop: 6, fontSize: 11, background: "rgba(147,197,253,0.10)", border: "1px solid #37507a", borderRadius: 4, padding: 4 }}>
             Последнее изменение: {eco.lastChangeReason}
           </div>
         ) : null}
