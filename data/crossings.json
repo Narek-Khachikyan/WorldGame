@@ -1,0 +1,38 @@
+[
+  {
+    "crossingId": "cross-GB-FR-1",
+    "fromRegionId": "GB-2",
+    "toRegionId": "FR-1",
+    "fromCountryId": "GB",
+    "toCountryId": "FR",
+    "type": "sea",
+    "name": "Dover Strait",
+    "nameRu": "пролив Па-де-Кале",
+    "distanceKm": 33,
+    "requiredFor": "island access UK"
+  },
+  {
+    "crossingId": "cross-SE-PL-1",
+    "fromRegionId": "SE-1",
+    "toRegionId": "PL-4",
+    "fromCountryId": "SE",
+    "toCountryId": "PL",
+    "type": "sea",
+    "name": "Baltic Sea crossing",
+    "nameRu": "Балтийская переправа",
+    "distanceKm": 200,
+    "requiredFor": "Scandinavia link"
+  },
+  {
+    "crossingId": "cross-GR-TR-1",
+    "fromRegionId": "GR-4",
+    "toRegionId": "TR-1",
+    "fromCountryId": "GR",
+    "toCountryId": "TR",
+    "type": "sea",
+    "name": "Aegean crossing",
+    "nameRu": "Эгейская переправа",
+    "distanceKm": 50,
+    "requiredFor": "Greece-Turkey link"
+  }
+]

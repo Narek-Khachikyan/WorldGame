@@ -5,3 +5,4 @@ export * from "./eventLog.js";
 export * from "./validator.js";
 export * from "./time.js";
 export * from "./engine.js";
+export * from "./scenario.js";

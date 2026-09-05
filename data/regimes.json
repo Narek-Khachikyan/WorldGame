@@ -1,0 +1,34 @@
+[
+  {
+    "regimeId": "liberalDemocracy",
+    "nameEn": "Liberal Democracy",
+    "nameRu": "Либеральная демократия",
+    "description": "Game label: competitive elections, judicial oversight, high stability bonus. Not an academic classification.",
+    "descriptionRu": "Игровой ярлык: конкурентные выборы, судебный контроль, бонус к стабильности. Не академическая классификация.",
+    "isGameLabel": true
+  },
+  {
+    "regimeId": "electoralDemocracy",
+    "nameEn": "Electoral Democracy",
+    "nameRu": "Электоральная демократия",
+    "description": "Game label: elections with uneven playing field, moderate stability.",
+    "descriptionRu": "Игровой ярлык: выборы с неровным полем, умеренная стабильность.",
+    "isGameLabel": true
+  },
+  {
+    "regimeId": "authoritarian",
+    "nameEn": "Authoritarian",
+    "nameRu": "Авторитарный",
+    "description": "Game label: restricted competition, stability via control, higher unrest risk on failure.",
+    "descriptionRu": "Игровой ярлык: ограниченная конкуренция, стабильность через контроль.",
+    "isGameLabel": true
+  },
+  {
+    "regimeId": "oneParty",
+    "nameEn": "One-Party",
+    "nameRu": "Однопартийный",
+    "description": "Game label: dominant party, very high retain probability, severe stability hit on loss.",
+    "descriptionRu": "Игровой ярлык: доминирующая партия, очень высокая вероятность удержания.",
+    "isGameLabel": true
+  }
+]
