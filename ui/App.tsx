@@ -6,6 +6,7 @@ import SidePanel from "./components/SidePanel.js";
 import EventLog from "./components/EventLog.js";
 import CountrySelection from "./components/CountrySelection.js";
 import EconomyPanel from "./EconomyPanel.js";
+import ArmyPanel from "./ArmyPanel.js";
 import ru from "./locales/ru.json";
 import "./styles/atlas.css";
 
@@ -248,7 +249,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* right column: side panel + economy + debug */}
+          {/* right column: side panel + economy + army + debug */}
           <div style={{ position: "sticky", top: 12, display: "flex", flexDirection: "column", gap: 12 }}>
             <SidePanel />
 
@@ -260,6 +261,9 @@ export default function App() {
                 Выберите страну для экономики
               </div>
             )}
+
+            {/* T5 ArmyPanel — union mount, uses store internally */}
+            <ArmyPanel />
 
             {/* quick stats debug */}
             <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, background: "#fff", padding: "8px 10px", fontSize: 11, color: "#6b7280", lineHeight: 1.4 }}>

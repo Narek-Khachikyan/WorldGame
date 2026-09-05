@@ -7,3 +7,4 @@ export * from "./time.js";
 export * from "./engine.js";
 export * from "./scenario.js";
 export * from "./economy.js";
+export * from "./army.js";
