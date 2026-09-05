@@ -1,0 +1,46 @@
+{
+  "_note": "Модельные коэффициенты войны и мира Slice A (WB-A T6). Не выдавать за реальную статистику. Юрвладелец меняется только миром. Факты в data/, балансы в rules/.",
+  "declareWar": {
+    "treasuryCost": 150,
+    "threatIncrease": 15,
+    "stabilityPenalty": 0,
+    "descriptionRu": "Объявление войны — видимая агрессия. Модельный коэффициент Slice A: цена 150₥ (баланс, не статистика). Повышает воспринимаемую угрозу на +15 (для ИИ T8). Требуется мир для аннексии. Недостаточно казны — отклоняется."
+  },
+  "exhaustion": {
+    "perDay": 0.6,
+    "perCasualtyPer1000": 6,
+    "perOccupiedRegion": 5,
+    "perLostRegion": 7,
+    "highThreshold": 45,
+    "max": 100,
+    "descriptionRu": "Истощение = дни ×0.6 + потери/1000×6 + оккупировано×5 + потеряно×7 (кап 100). Высокое ≥45."
+  },
+  "peace": {
+    "indemnityAmount": 250,
+    "indemnityMaxFromTreasuryRatio": 0.5,
+    "descriptionRu": "Контрибуция = фиксированный перевод 250 из казны проигравшего победителю (через экономику T4 + синхронизацию T5). Белый — статус-кво. Аннексия — только оккупированное."
+  },
+  "ai": {
+    "forceRatioThreshold": 0.7,
+    "exhaustionHigh": 45,
+    "occupationThreshold": 1,
+    "daysThreshold": 30,
+    "descriptionRu": "ИИ соглашается если проигрывает (сила <0.7) + истощение высокое + оккупация. Иначе отказывает с топ-2 причинами."
+  },
+  "threat": {
+    "aggressionIncrease": 15,
+    "max": 100,
+    "descriptionRu": "Угроза страны-агрессора растёт на 15 за каждую объявленную войну, видна в дипломатии (заготовка под B/T8)."
+  },
+  "messages": {
+    "selfWar": "нельзя объявить войну самому себе",
+    "unknownCountry": "неизвестная страна",
+    "alreadyAtWar": "уже в войне с этой страной",
+    "noWar": "война не найдена",
+    "notParticipant": "предлагающий не участник войны",
+    "warNotActive": "война уже завершена",
+    "unknownPeaceType": "неизвестный тип мира: white | annexOccupied | indemnity",
+    "noOccupiedForAnnex": "нет оккупированных регионов для аннексии",
+    "insufficientTreasuryForIndemnity": "у проигравшего недостаточно средств для контрибуции (переводится доступное)"
+  }
+}

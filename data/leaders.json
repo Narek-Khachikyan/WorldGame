@@ -1,0 +1,416 @@
+[
+  {
+    "countryId": "GB",
+    "incumbent": {
+      "name": "Keir Starmer",
+      "title": "Prime Minister",
+      "since": "2024-07-05",
+      "source": "Wikipedia — Keir Starmer, accessed 2026-09-05",
+      "portrait": null
+    },
+    "pool": [
+      {
+        "name": "Rishi Sunak",
+        "title": "MP, former PM",
+        "since": "2022-10-25",
+        "source": "Wikipedia — Rishi Sunak, accessed 2026-09-05"
+      },
+      {
+        "name": "Kemi Badenoch",
+        "title": "Leader of the Opposition",
+        "since": "2024-11-02",
+        "source": "Wikipedia — Kemi Badenoch, accessed 2026-09-05"
+      },
+      {
+        "name": "Ed Davey",
+        "title": "Leader of the Liberal Democrats",
+        "since": "2020-08-27",
+        "source": "Wikipedia — Ed Davey, accessed 2026-09-05"
+      }
+    ]
+  },
+  {
+    "countryId": "FR",
+    "incumbent": {
+      "name": "Emmanuel Macron",
+      "title": "President",
+      "since": "2017-05-14",
+      "source": "Wikipedia — Emmanuel Macron, accessed 2026-09-05",
+      "portrait": null
+    },
+    "pool": [
+      {
+        "name": "Marine Le Pen",
+        "title": "MP, National Rally",
+        "since": "2017-01-01",
+        "source": "Wikipedia — Marine Le Pen, accessed 2026-09-05"
+      },
+      {
+        "name": "Gabriel Attal",
+        "title": "Former Prime Minister",
+        "since": "2024-01-09",
+        "source": "Wikipedia — Gabriel Attal, accessed 2026-09-05"
+      },
+      {
+        "name": "Jean-Luc Mélenchon",
+        "title": "Leader of La France Insoumise",
+        "since": "2016-02-10",
+        "source": "Wikipedia — Jean-Luc Mélenchon, accessed 2026-09-05"
+      }
+    ]
+  },
+  {
+    "countryId": "ES",
+    "incumbent": {
+      "name": "Pedro Sánchez",
+      "title": "Prime Minister",
+      "since": "2018-06-02",
+      "source": "Wikipedia — Pedro Sánchez, accessed 2026-09-05",
+      "portrait": null
+    },
+    "pool": [
+      {
+        "name": "Alberto Núñez Feijóo",
+        "title": "Leader of the People's Party",
+        "since": "2022-04-02",
+        "source": "Wikipedia — Alberto Núñez Feijóo, accessed 2026-09-05"
+      },
+      {
+        "name": "Yolanda Díaz",
+        "title": "Deputy PM, Sumar",
+        "since": "2021-07-12",
+        "source": "Wikipedia — Yolanda Díaz, accessed 2026-09-05"
+      },
+      {
+        "name": "Santiago Abascal",
+        "title": "Leader of Vox",
+        "since": "2014-09-20",
+        "source": "Wikipedia — Santiago Abascal, accessed 2026-09-05"
+      }
+    ]
+  },
+  {
+    "countryId": "IT",
+    "incumbent": {
+      "name": "Giorgia Meloni",
+      "title": "Prime Minister",
+      "since": "2022-10-22",
+      "source": "Wikipedia — Giorgia Meloni, accessed 2026-09-05",
+      "portrait": null
+    },
+    "pool": [
+      {
+        "name": "Elly Schlein",
+        "title": "Secretary of Democratic Party",
+        "since": "2023-03-12",
+        "source": "Wikipedia — Elly Schlein, accessed 2026-09-05"
+      },
+      {
+        "name": "Matteo Salvini",
+        "title": "Deputy PM, League",
+        "since": "2022-10-22",
+        "source": "Wikipedia — Matteo Salvini, accessed 2026-09-05"
+      }
+    ]
+  },
+  {
+    "countryId": "DE",
+    "incumbent": {
+      "name": "Friedrich Merz",
+      "title": "Chancellor",
+      "since": "2025-05-06",
+      "source": "Wikipedia — Friedrich Merz, accessed 2026-09-05",
+      "portrait": null
+    },
+    "pool": [
+      {
+        "name": "Olaf Scholz",
+        "title": "Former Chancellor",
+        "since": "2021-12-08",
+        "source": "Wikipedia — Olaf Scholz, accessed 2026-09-05"
+      },
+      {
+        "name": "Annalena Baerbock",
+        "title": "Former Foreign Minister",
+        "since": "2021-12-08",
+        "source": "Wikipedia — Annalena Baerbock, accessed 2026-09-05"
+      },
+      {
+        "name": "Alice Weidel",
+        "title": "Co-leader AfD",
+        "since": "2017-02-01",
+        "source": "Wikipedia — Alice Weidel, accessed 2026-09-05"
+      }
+    ]
+  },
+  {
+    "countryId": "PL",
+    "incumbent": {
+      "name": "Donald Tusk",
+      "title": "Prime Minister",
+      "since": "2023-12-13",
+      "source": "Wikipedia — Donald Tusk, accessed 2026-09-05",
+      "portrait": null
+    },
+    "pool": [
+      {
+        "name": "Mateusz Morawiecki",
+        "title": "Former PM",
+        "since": "2017-12-11",
+        "source": "Wikipedia — Mateusz Morawiecki, accessed 2026-09-05"
+      },
+      {
+        "name": "Szymon Hołownia",
+        "title": "Marshal of the Sejm",
+        "since": "2023-11-13",
+        "source": "Wikipedia — Szymon Hołownia, accessed 2026-09-05"
+      }
+    ]
+  },
+  {
+    "countryId": "SE",
+    "incumbent": {
+      "name": "Ulf Kristersson",
+      "title": "Prime Minister",
+      "since": "2022-10-18",
+      "source": "Wikipedia — Ulf Kristersson, accessed 2026-09-05",
+      "portrait": null
+    },
+    "pool": [
+      {
+        "name": "Magdalena Andersson",
+        "title": "Former PM",
+        "since": "2021-11-30",
+        "source": "Wikipedia — Magdalena Andersson, accessed 2026-09-05"
+      },
+      {
+        "name": "Jimmie Åkesson",
+        "title": "Leader Sweden Democrats",
+        "since": "2005-05-07",
+        "source": "Wikipedia — Jimmie Åkesson, accessed 2026-09-05"
+      }
+    ]
+  },
+  {
+    "countryId": "RO",
+    "incumbent": {
+      "name": "Nicușor Dan",
+      "title": "President",
+      "since": "2025-05-26",
+      "source": "Wikipedia — Nicușor Dan, accessed 2026-09-05",
+      "portrait": null
+    },
+    "pool": [
+      {
+        "name": "Marcel Ciolacu",
+        "title": "Former PM",
+        "since": "2023-06-15",
+        "source": "Wikipedia — Marcel Ciolacu, accessed 2026-09-05"
+      },
+      {
+        "name": "George Simion",
+        "title": "Leader AUR",
+        "since": "2019-09-19",
+        "source": "Wikipedia — George Simion, accessed 2026-09-05"
+      }
+    ]
+  },
+  {
+    "countryId": "GR",
+    "incumbent": {
+      "name": "Kyriakos Mitsotakis",
+      "title": "Prime Minister",
+      "since": "2023-06-26",
+      "source": "Wikipedia — Kyriakos Mitsotakis, accessed 2026-09-05",
+      "portrait": null
+    },
+    "pool": [
+      {
+        "name": "Alexis Tsipras",
+        "title": "Former PM",
+        "since": "2015-09-21",
+        "source": "Wikipedia — Alexis Tsipras, accessed 2026-09-05"
+      },
+      {
+        "name": "Nikos Androulakis",
+        "title": "Leader PASOK",
+        "since": "2021-12-12",
+        "source": "Wikipedia — Nikos Androulakis, accessed 2026-09-05"
+      }
+    ]
+  },
+  {
+    "countryId": "UA",
+    "incumbent": {
+      "name": "Volodymyr Zelenskyy",
+      "title": "President",
+      "since": "2019-05-20",
+      "source": "Wikipedia — Volodymyr Zelenskyy, accessed 2026-09-05",
+      "portrait": null
+    },
+    "pool": [
+      {
+        "name": "Yulia Tymoshenko",
+        "title": "Former PM",
+        "since": "2007-12-18",
+        "source": "Wikipedia — Yulia Tymoshenko, accessed 2026-09-05"
+      },
+      {
+        "name": "Petro Poroshenko",
+        "title": "Former President",
+        "since": "2014-06-07",
+        "source": "Wikipedia — Petro Poroshenko, accessed 2026-09-05"
+      },
+      {
+        "name": "Vitali Klitschko",
+        "title": "Mayor of Kyiv",
+        "since": "2014-06-05",
+        "source": "Wikipedia — Vitali Klitschko, accessed 2026-09-05"
+      }
+    ]
+  },
+  {
+    "countryId": "TR",
+    "incumbent": {
+      "name": "Recep Tayyip Erdoğan",
+      "title": "President",
+      "since": "2014-08-28",
+      "source": "Wikipedia — Recep Tayyip Erdoğan, accessed 2026-09-05",
+      "portrait": null
+    },
+    "pool": [
+      {
+        "name": "Ekrem İmamoğlu",
+        "title": "Mayor of Istanbul",
+        "since": "2019-06-27",
+        "source": "Wikipedia — Ekrem İmamoğlu, accessed 2026-09-05"
+      },
+      {
+        "name": "Kemal Kılıçdaroğlu",
+        "title": "Former CHP leader",
+        "since": "2010-05-22",
+        "source": "Wikipedia — Kemal Kılıçdaroğlu, accessed 2026-09-05"
+      }
+    ]
+  },
+  {
+    "countryId": "BY",
+    "incumbent": {
+      "name": "Alexander Lukashenko",
+      "title": "President",
+      "since": "1994-07-20",
+      "source": "Wikipedia — Alexander Lukashenko, accessed 2026-09-05",
+      "portrait": null
+    },
+    "pool": [
+      {
+        "name": "Sviatlana Tsikhanouskaya",
+        "title": "Opposition leader",
+        "since": "2020-08-14",
+        "source": "Wikipedia — Sviatlana Tsikhanouskaya, accessed 2026-09-05"
+      },
+      {
+        "name": "Viktor Babariko",
+        "title": "Former banker, opposition",
+        "since": "2020-05-01",
+        "source": "Wikipedia — Viktor Babariko, accessed 2026-09-05"
+      }
+    ]
+  },
+  {
+    "countryId": "CZ",
+    "incumbent": {
+      "name": "Petr Fiala",
+      "title": "Prime Minister",
+      "since": "2021-11-28",
+      "source": "Wikipedia — Petr Fiala, accessed 2026-09-05",
+      "portrait": null
+    },
+    "pool": [
+      {
+        "name": "Andrej Babiš",
+        "title": "Former PM",
+        "since": "2017-12-13",
+        "source": "Wikipedia — Andrej Babiš, accessed 2026-09-05"
+      },
+      {
+        "name": "Petr Pavel",
+        "title": "President",
+        "since": "2023-03-09",
+        "source": "Wikipedia — Petr Pavel, accessed 2026-09-05"
+      }
+    ]
+  },
+  {
+    "countryId": "AT",
+    "incumbent": {
+      "name": "Christian Stocker",
+      "title": "Chancellor",
+      "since": "2025-03-03",
+      "source": "Wikipedia — Christian Stocker, accessed 2026-09-05",
+      "portrait": null
+    },
+    "pool": [
+      {
+        "name": "Karl Nehammer",
+        "title": "Former Chancellor",
+        "since": "2021-12-06",
+        "source": "Wikipedia — Karl Nehammer, accessed 2026-09-05"
+      },
+      {
+        "name": "Herbert Kickl",
+        "title": "Leader FPÖ",
+        "since": "2021-06-07",
+        "source": "Wikipedia — Herbert Kickl, accessed 2026-09-05"
+      }
+    ]
+  },
+  {
+    "countryId": "HU",
+    "incumbent": {
+      "name": "Viktor Orbán",
+      "title": "Prime Minister",
+      "since": "2010-05-29",
+      "source": "Wikipedia — Viktor Orbán, accessed 2026-09-05",
+      "portrait": null
+    },
+    "pool": [
+      {
+        "name": "Péter Márki-Zay",
+        "title": "Former opposition candidate",
+        "since": "2021-10-17",
+        "source": "Wikipedia — Péter Márki-Zay, accessed 2026-09-05"
+      },
+      {
+        "name": "Klára Dobrev",
+        "title": "MEP, Democratic Coalition",
+        "since": "2019-07-02",
+        "source": "Wikipedia — Klára Dobrev, accessed 2026-09-05"
+      }
+    ]
+  },
+  {
+    "countryId": "RS",
+    "incumbent": {
+      "name": "Aleksandar Vučić",
+      "title": "President",
+      "since": "2017-05-31",
+      "source": "Wikipedia — Aleksandar Vučić, accessed 2026-09-05",
+      "portrait": null
+    },
+    "pool": [
+      {
+        "name": "Dragan Đilas",
+        "title": "Opposition leader",
+        "since": "2018-01-01",
+        "source": "Wikipedia — Dragan Đilas, accessed 2026-09-05"
+      },
+      {
+        "name": "Miloš Jovanović",
+        "title": "President DSS",
+        "since": "2017-01-01",
+        "source": "Wikipedia — Miloš Jovanović, accessed 2026-09-05"
+      }
+    ]
+  }
+]

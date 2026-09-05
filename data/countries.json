@@ -1,0 +1,370 @@
+[
+  {
+    "countryId": "GB",
+    "countryCode": "GB",
+    "isoA2": "GB",
+    "isoA3": "GBR",
+    "nameEn": "United Kingdom",
+    "nameRu": "Великобритания",
+    "capital": "London",
+    "capitalCoords": [
+      -0.1276,
+      51.5072
+    ],
+    "electionMonth": 5,
+    "electionDay": 2,
+    "landlocked": false,
+    "island": true,
+    "bbox": [
+      -8,
+      50,
+      -3,
+      55
+    ]
+  },
+  {
+    "countryId": "FR",
+    "countryCode": "FR",
+    "isoA2": "FR",
+    "isoA3": "FRA",
+    "nameEn": "France",
+    "nameRu": "Франция",
+    "capital": "Paris",
+    "capitalCoords": [
+      2.3522,
+      48.8566
+    ],
+    "electionMonth": 4,
+    "electionDay": 23,
+    "landlocked": false,
+    "island": false,
+    "bbox": [
+      1,
+      43,
+      6,
+      48
+    ]
+  },
+  {
+    "countryId": "ES",
+    "countryCode": "ES",
+    "isoA2": "ES",
+    "isoA3": "ESP",
+    "nameEn": "Spain",
+    "nameRu": "Испания",
+    "capital": "Madrid",
+    "capitalCoords": [
+      -3.7038,
+      40.4168
+    ],
+    "electionMonth": 7,
+    "electionDay": 23,
+    "landlocked": false,
+    "island": false,
+    "bbox": [
+      -5,
+      37,
+      0,
+      42
+    ]
+  },
+  {
+    "countryId": "IT",
+    "countryCode": "IT",
+    "isoA2": "IT",
+    "isoA3": "ITA",
+    "nameEn": "Italy",
+    "nameRu": "Италия",
+    "capital": "Rome",
+    "capitalCoords": [
+      12.4964,
+      41.9028
+    ],
+    "electionMonth": 9,
+    "electionDay": 25,
+    "landlocked": false,
+    "island": false,
+    "bbox": [
+      8,
+      37,
+      13,
+      46
+    ]
+  },
+  {
+    "countryId": "DE",
+    "countryCode": "DE",
+    "isoA2": "DE",
+    "isoA3": "DEU",
+    "nameEn": "Germany",
+    "nameRu": "Германия",
+    "capital": "Berlin",
+    "capitalCoords": [
+      13.405,
+      52.52
+    ],
+    "electionMonth": 9,
+    "electionDay": 26,
+    "landlocked": false,
+    "island": false,
+    "bbox": [
+      7,
+      50,
+      12,
+      55
+    ]
+  },
+  {
+    "countryId": "PL",
+    "countryCode": "PL",
+    "isoA2": "PL",
+    "isoA3": "POL",
+    "nameEn": "Poland",
+    "nameRu": "Польша",
+    "capital": "Warsaw",
+    "capitalCoords": [
+      21.0122,
+      52.2297
+    ],
+    "electionMonth": 10,
+    "electionDay": 15,
+    "landlocked": false,
+    "island": false,
+    "bbox": [
+      14,
+      51,
+      19,
+      56
+    ]
+  },
+  {
+    "countryId": "SE",
+    "countryCode": "SE",
+    "isoA2": "SE",
+    "isoA3": "SWE",
+    "nameEn": "Sweden",
+    "nameRu": "Швеция",
+    "capital": "Stockholm",
+    "capitalCoords": [
+      18.0686,
+      59.3293
+    ],
+    "electionMonth": 9,
+    "electionDay": 11,
+    "landlocked": false,
+    "island": false,
+    "bbox": [
+      14,
+      60,
+      19,
+      65
+    ]
+  },
+  {
+    "countryId": "RO",
+    "countryCode": "RO",
+    "isoA2": "RO",
+    "isoA3": "ROU",
+    "nameEn": "Romania",
+    "nameRu": "Румыния",
+    "capital": "Bucharest",
+    "capitalCoords": [
+      26.1025,
+      44.4268
+    ],
+    "electionMonth": 11,
+    "electionDay": 24,
+    "landlocked": false,
+    "island": false,
+    "bbox": [
+      22,
+      44,
+      27,
+      49
+    ]
+  },
+  {
+    "countryId": "GR",
+    "countryCode": "GR",
+    "isoA2": "GR",
+    "isoA3": "GRC",
+    "nameEn": "Greece",
+    "nameRu": "Греция",
+    "capital": "Athens",
+    "capitalCoords": [
+      23.7275,
+      37.9838
+    ],
+    "electionMonth": 6,
+    "electionDay": 25,
+    "landlocked": false,
+    "island": false,
+    "bbox": [
+      22,
+      36,
+      27,
+      41
+    ]
+  },
+  {
+    "countryId": "UA",
+    "countryCode": "UA",
+    "isoA2": "UA",
+    "isoA3": "UKR",
+    "nameEn": "Ukraine",
+    "nameRu": "Украина",
+    "capital": "Kyiv",
+    "capitalCoords": [
+      30.5234,
+      50.4501
+    ],
+    "electionMonth": 3,
+    "electionDay": 28,
+    "landlocked": false,
+    "island": false,
+    "bbox": [
+      24,
+      49,
+      30,
+      54
+    ]
+  },
+  {
+    "countryId": "TR",
+    "countryCode": "TR",
+    "isoA2": "TR",
+    "isoA3": "TUR",
+    "nameEn": "Turkey",
+    "nameRu": "Турция",
+    "capital": "Ankara",
+    "capitalCoords": [
+      32.8597,
+      39.9334
+    ],
+    "electionMonth": 5,
+    "electionDay": 14,
+    "landlocked": false,
+    "island": false,
+    "bbox": [
+      28,
+      36,
+      34,
+      41
+    ]
+  },
+  {
+    "countryId": "BY",
+    "countryCode": "BY",
+    "isoA2": "BY",
+    "isoA3": "BLR",
+    "nameEn": "Belarus",
+    "nameRu": "Беларусь",
+    "capital": "Minsk",
+    "capitalCoords": [
+      27.5615,
+      53.9045
+    ],
+    "electionMonth": 2,
+    "electionDay": 26,
+    "landlocked": true,
+    "island": false,
+    "bbox": [
+      20,
+      54,
+      25,
+      58
+    ]
+  },
+  {
+    "countryId": "CZ",
+    "countryCode": "CZ",
+    "isoA2": "CZ",
+    "isoA3": "CZE",
+    "nameEn": "Czechia",
+    "nameRu": "Чехия",
+    "capital": "Prague",
+    "capitalCoords": [
+      14.4378,
+      50.0755
+    ],
+    "electionMonth": 10,
+    "electionDay": 4,
+    "landlocked": true,
+    "island": false,
+    "bbox": [
+      12,
+      51,
+      14,
+      54
+    ]
+  },
+  {
+    "countryId": "AT",
+    "countryCode": "AT",
+    "isoA2": "AT",
+    "isoA3": "AUT",
+    "nameEn": "Austria",
+    "nameRu": "Австрия",
+    "capital": "Vienna",
+    "capitalCoords": [
+      16.3738,
+      48.2082
+    ],
+    "electionMonth": 9,
+    "electionDay": 28,
+    "landlocked": true,
+    "island": false,
+    "bbox": [
+      13,
+      45,
+      16,
+      49
+    ]
+  },
+  {
+    "countryId": "HU",
+    "countryCode": "HU",
+    "isoA2": "HU",
+    "isoA3": "HUN",
+    "nameEn": "Hungary",
+    "nameRu": "Венгрия",
+    "capital": "Budapest",
+    "capitalCoords": [
+      19.0402,
+      47.4979
+    ],
+    "electionMonth": 4,
+    "electionDay": 12,
+    "landlocked": true,
+    "island": false,
+    "bbox": [
+      16,
+      46,
+      20,
+      50
+    ]
+  },
+  {
+    "countryId": "RS",
+    "countryCode": "RS",
+    "isoA2": "RS",
+    "isoA3": "SRB",
+    "nameEn": "Serbia",
+    "nameRu": "Сербия",
+    "capital": "Belgrade",
+    "capitalCoords": [
+      20.4573,
+      44.7866
+    ],
+    "electionMonth": 4,
+    "electionDay": 2,
+    "landlocked": true,
+    "island": false,
+    "bbox": [
+      18,
+      42,
+      22,
+      46
+    ]
+  }
+]
