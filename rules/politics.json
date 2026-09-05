@@ -1,0 +1,86 @@
+{
+  "_note": "Модельные коэффициенты политики Slice A (WB-A T7). Не выдавать за реальную статистику. Юррежимы — игровые ярлыки. Факты в data/, балансы в rules/.",
+  "regimes": {
+    "liberalDemocracy": {
+      "stabilityBase": 68,
+      "supportBase": 62,
+      "retainBonus": 0,
+      "taxEfficiency": 1.0,
+      "warFatigueFactor": 1.2,
+      "electionCompetitiveness": 0.92
+    },
+    "electoralDemocracy": {
+      "stabilityBase": 60,
+      "supportBase": 55,
+      "retainBonus": 0.14,
+      "taxEfficiency": 0.96,
+      "warFatigueFactor": 1.0,
+      "electionCompetitiveness": 0.7
+    },
+    "authoritarian": {
+      "stabilityBase": 55,
+      "supportBase": 50,
+      "retainBonus": 0.34,
+      "taxEfficiency": 0.88,
+      "warFatigueFactor": 0.8,
+      "electionCompetitiveness": 0.32
+    },
+    "oneParty": {
+      "stabilityBase": 45,
+      "supportBase": 45,
+      "retainBonus": 0.52,
+      "taxEfficiency": 0.82,
+      "warFatigueFactor": 0.6,
+      "electionCompetitiveness": 0.18
+    }
+  },
+  "regimeChange": {
+    "treasuryCost": 220,
+    "immediateStabilityPenalty": 14,
+    "lagDaysMin": 180,
+    "lagDaysMax": 360,
+    "cooldownDays": 730,
+    "stabilityHitOnElectionLoss": 9,
+    "leaderChangeSupportDrift": 2.5,
+    "descriptionRu": "Смена режима — значимое решение: цена из казны, −стабильность сразу, эффект через 6–12 мес., кулдаун ~2 года, запрет при войне и потере столицы"
+  },
+  "election": {
+    "intervalYears": 5,
+    "retainCoeffs": {
+      "supportWeight": 0.26,
+      "stabilityWeight": 0.24,
+      "fatigueWeight": -0.18,
+      "economyWeight": 0.16,
+      "base": 0.24
+    },
+    "economyDebtPenalty": 0.08,
+    "economyGrowthBonusFactor": 8,
+    "descriptionRu": "retainP = clamp(base + support* w_s + stability*w_st + fatigue*w_f + economy*w_e + retainBonus, 0, 0.98) vs seeded RNG"
+  },
+  "crisis": {
+    "warningThreshold": 30,
+    "criticalThreshold": 20,
+    "dailyDriftWarning": -0.06,
+    "dailyDriftCritical": -0.11,
+    "recoveryChance": 0.33,
+    "recoveryAmount": 0.16,
+    "stabilityMin": 0,
+    "stabilityMax": 100,
+    "warFatigueDailyIncrease": 0.16,
+    "warFatigueDailyDecay": 0.09,
+    "warFatigueMax": 100,
+    "descriptionRu": "Низкая стабильность = постепенный кризис с шансом восстановления, не instant death. Предупреждения до краха."
+  },
+  "messages": {
+    "unknownCountry": "неизвестная страна",
+    "unknownRegime": "неизвестный режим: liberalDemocracy | electoralDemocracy | authoritarian | oneParty",
+    "sameRegime": "режим уже установлен",
+    "insufficientTreasury": "недостаточно средств для смены режима",
+    "cooldownActive": "смена режима на кулдауне",
+    "bannedAtWar": "смена режима запрещена во время войны",
+    "bannedCapitalLost": "смена режима запрещена при потере столицы",
+    "noLeaderInPool": "лидер не в пуле страны",
+    "cantChangeRegimeDuringPending": "смена режима уже запланирована, дождитесь вступления",
+    "aiNoRegimeChange": "ИИ в A режим не меняет"
+  }
+}
